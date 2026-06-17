@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { validationResult } from 'express-validator';
-import { query } from '../config/database';
+import { query } from '../db/database';
 import { AuthRequest } from '../middleware/auth';
 
 // ─── Get full profile ─────────────────────────────────────────────────────────

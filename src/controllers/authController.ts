@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { validationResult } from 'express-validator';
-import { query } from '../config/database';
+import { query } from '../db/database';
 import {
   signAccessToken,
   signRefreshToken,
