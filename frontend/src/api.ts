@@ -41,6 +41,46 @@ export type AuthResponse = {
   refreshToken: string;
 };
 
+export type RoutineExercise = {
+  id: string;
+  name: string;
+  primaryMuscle: string;
+  secondaryMuscles?: string[];
+  order: number;
+  sets: number;
+  repMin: number;
+  repMax: number;
+  targetRir: number;
+  restSeconds: number;
+  tempo?: string | null;
+  notes?: string | null;
+};
+
+export type RoutineDay = {
+  id: string;
+  dayNumber: number;
+  name: string;
+  focus: string[];
+  exercises: RoutineExercise[];
+};
+
+export type Routine = {
+  id: string;
+  name: string;
+  goal: string;
+  experienceLevel: string;
+  daysPerWeek: number;
+  sessionDurationMin: number;
+  status: string;
+  generationSource: string;
+  createdAt: string;
+  days: RoutineDay[];
+};
+
+export type RoutineSummary = Omit<Routine, 'days'> & {
+  dayCount: number;
+};
+
 type ApiErrorBody = {
   error?: string;
   errors?: Array<{ msg: string }>;
@@ -104,4 +144,18 @@ export function updateProfile(accessToken: string, profile: Partial<Profile>) {
     method: 'PATCH',
     body: JSON.stringify(profile),
   }, accessToken);
+}
+
+export function generateRoutine(accessToken: string) {
+  return request<{ routine: Routine }>('/api/routines/generate', {
+    method: 'POST',
+  }, accessToken);
+}
+
+export function listRoutines(accessToken: string) {
+  return request<{ routines: RoutineSummary[] }>('/api/routines', {}, accessToken);
+}
+
+export function getRoutine(accessToken: string, routineId: string) {
+  return request<{ routine: Routine }>(`/api/routines/${routineId}`, {}, accessToken);
 }

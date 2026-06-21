@@ -2,8 +2,12 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   AuthUser,
   Profile,
+  Routine,
+  generateRoutine,
   getMe,
   getProfile,
+  getRoutine,
+  listRoutines,
   login,
   register,
   updateProfile,
@@ -56,6 +60,19 @@ function removeBlankFields(profile: Partial<Profile>) {
   ) as Partial<Profile>;
 }
 
+function buildProfilePayload(profile: Partial<Profile>) {
+  return removeBlankFields({
+    ...profile,
+    bodyWeightKg: numberOrUndefined(profile.bodyWeightKg),
+    heightCm: numberOrUndefined(profile.heightCm),
+    bodyFatPct: numberOrUndefined(profile.bodyFatPct),
+    targetWeightKg: numberOrUndefined(profile.targetWeightKg),
+    targetBodyFatPct: numberOrUndefined(profile.targetBodyFatPct),
+    daysPerWeek: numberOrUndefined(profile.daysPerWeek),
+    sessionDurationMin: numberOrUndefined(profile.sessionDurationMin),
+  });
+}
+
 function readSession(): Session | null {
   const raw = localStorage.getItem(sessionKey);
   if (!raw) return null;
@@ -78,6 +95,9 @@ function App() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [routine, setRoutine] = useState<Routine | null>(null);
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
 
   const isSignedIn = !!session?.accessToken;
 
@@ -101,9 +121,10 @@ function App() {
 
     async function loadSession() {
       try {
-        const [me, currentProfile] = await Promise.all([
+        const [me, currentProfile, routineList] = await Promise.all([
           getMe(session!.accessToken),
           getProfile(session!.accessToken),
+          listRoutines(session!.accessToken),
         ]);
 
         setUser({ id: me.id, email: me.email, createdAt: me.createdAt });
@@ -116,6 +137,12 @@ function App() {
           limitations: currentProfile.limitations ?? '',
           equipment: currentProfile.equipment?.length ? currentProfile.equipment : ['gym_full'],
         });
+
+        if (routineList.routines.length > 0) {
+          const latest = await getRoutine(session!.accessToken, routineList.routines[0].id);
+          setRoutine(latest.routine);
+          setActiveDayIndex(0);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not load your session');
       }
@@ -160,17 +187,7 @@ function App() {
     setMessage('');
 
     try {
-      const payload = removeBlankFields({
-        ...profile,
-        bodyWeightKg: numberOrUndefined(profile.bodyWeightKg),
-        heightCm: numberOrUndefined(profile.heightCm),
-        bodyFatPct: numberOrUndefined(profile.bodyFatPct),
-        targetWeightKg: numberOrUndefined(profile.targetWeightKg),
-        targetBodyFatPct: numberOrUndefined(profile.targetBodyFatPct),
-        daysPerWeek: numberOrUndefined(profile.daysPerWeek),
-        sessionDurationMin: numberOrUndefined(profile.sessionDurationMin),
-      });
-
+      const payload = buildProfilePayload(profile);
       const response = await updateProfile(session.accessToken, payload);
       setProfile({ ...profile, ...response.profile });
       setMessage('Profile saved.');
@@ -181,11 +198,33 @@ function App() {
     }
   }
 
+  async function handleGenerateRoutine() {
+    if (!session?.accessToken) return;
+
+    setGenerating(true);
+    setError('');
+    setMessage('');
+
+    try {
+      await updateProfile(session.accessToken, buildProfilePayload(profile));
+      const response = await generateRoutine(session.accessToken);
+      setRoutine(response.routine);
+      setActiveDayIndex(0);
+      setMessage('New routine generated.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not generate routine');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   function logout() {
     localStorage.removeItem(sessionKey);
     setSession(null);
     setUser(null);
     setProfile(defaultProfile);
+    setRoutine(null);
+    setActiveDayIndex(0);
     setMessage('');
     setError('');
   }
@@ -389,13 +428,26 @@ function App() {
               <button className="primary-button" disabled={loading}>
                 {loading ? 'Saving...' : 'Save profile'}
               </button>
-              <button className="secondary-button" type="button" disabled>
-                Generate routine
+              <button
+                className="secondary-button"
+                type="button"
+                disabled={generating}
+                onClick={handleGenerateRoutine}
+              >
+                {generating ? 'Generating...' : routine ? 'Generate new routine' : 'Generate routine'}
               </button>
             </div>
           </form>
 
           <Feedback message={message} error={error} />
+
+          {routine && (
+            <RoutineView
+              routine={routine}
+              activeDayIndex={activeDayIndex}
+              onDayChange={setActiveDayIndex}
+            />
+          )}
         </section>
       )}
     </main>
@@ -409,6 +461,79 @@ function Feedback({ message, error }: { message: string; error: string }) {
     <div className={error ? 'feedback error' : 'feedback'}>
       {error || message}
     </div>
+  );
+}
+
+function RoutineView({
+  routine,
+  activeDayIndex,
+  onDayChange,
+}: {
+  routine: Routine;
+  activeDayIndex: number;
+  onDayChange: (index: number) => void;
+}) {
+  const activeDay = routine.days[activeDayIndex] ?? routine.days[0];
+  if (!activeDay) return null;
+
+  return (
+    <section className="routine-section">
+      <div className="routine-heading">
+        <div>
+          <p className="section-label">Current routine</p>
+          <h2>{routine.name}</h2>
+        </div>
+        <div className="routine-meta">
+          <span>{routine.daysPerWeek} days</span>
+          <span>{routine.sessionDurationMin} min</span>
+          <span>{routine.experienceLevel}</span>
+        </div>
+      </div>
+
+      <div className="day-tabs" role="tablist" aria-label="Routine days">
+        {routine.days.map((day, index) => (
+          <button
+            key={day.id}
+            type="button"
+            role="tab"
+            aria-selected={index === activeDayIndex}
+            className={index === activeDayIndex ? 'day-tab active' : 'day-tab'}
+            onClick={() => onDayChange(index)}
+          >
+            <span>Day {day.dayNumber}</span>
+            <strong>{day.name}</strong>
+          </button>
+        ))}
+      </div>
+
+      <div className="day-summary">
+        <div>
+          <p className="section-label">Day {activeDay.dayNumber}</p>
+          <h3>{activeDay.name}</h3>
+        </div>
+        <p>{activeDay.focus.join(' / ')}</p>
+      </div>
+
+      <div className="exercise-list">
+        {activeDay.exercises.map((exercise) => (
+          <div className="exercise-row" key={`${activeDay.id}-${exercise.order}`}>
+            <span className="exercise-order">{exercise.order}</span>
+            <div className="exercise-name">
+              <strong>{exercise.name}</strong>
+              <span>{exercise.primaryMuscle}</span>
+            </div>
+            <div className="exercise-prescription">
+              <strong>{exercise.sets} x {exercise.repMin}-{exercise.repMax}</strong>
+              <span>{exercise.targetRir} RIR</span>
+            </div>
+            <div className="exercise-rest">
+              <strong>{exercise.restSeconds}s</strong>
+              <span>Rest</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
