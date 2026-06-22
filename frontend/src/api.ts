@@ -81,6 +81,61 @@ export type RoutineSummary = Omit<Routine, 'days'> & {
   dayCount: number;
 };
 
+export type LoggedSet = {
+  id: string;
+  setNumber: number;
+  setType: 'warmup' | 'working' | 'drop' | 'failure';
+  weightKg: string | number | null;
+  reps: number;
+  rir: number | null;
+  rpe: string | number | null;
+  isCompleted: boolean;
+  completedAt: string | null;
+  notes: string | null;
+};
+
+export type WorkoutExercise = {
+  id: string;
+  exerciseId: string;
+  name: string;
+  primaryMuscle: string;
+  order: number;
+  prescribedSets: number | null;
+  prescribedRepMin: number | null;
+  prescribedRepMax: number | null;
+  targetRir: number | null;
+  restSeconds: number | null;
+  notes: string | null;
+  sets: LoggedSet[];
+};
+
+export type Workout = {
+  id: string;
+  routineId: string | null;
+  routineDayId: string | null;
+  routineName: string | null;
+  dayNumber: number | null;
+  name: string;
+  status: 'in_progress' | 'completed' | 'cancelled';
+  startedAt: string;
+  completedAt: string | null;
+  notes: string | null;
+  exercises: WorkoutExercise[];
+};
+
+export type WorkoutHistoryItem = {
+  id: string;
+  name: string;
+  status: Workout['status'];
+  routineId: string | null;
+  routineDayId: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  exerciseCount: number;
+  completedSetCount: number;
+  totalVolumeKg: string | number;
+};
+
 type ApiErrorBody = {
   error?: string;
   errors?: Array<{ msg: string }>;
@@ -158,4 +213,51 @@ export function listRoutines(accessToken: string) {
 
 export function getRoutine(accessToken: string, routineId: string) {
   return request<{ routine: Routine }>(`/api/routines/${routineId}`, {}, accessToken);
+}
+
+export function startWorkout(accessToken: string, routineDayId: string) {
+  return request<{ workout: Workout }>('/api/workouts/start', {
+    method: 'POST',
+    body: JSON.stringify({ routineDayId }),
+  }, accessToken);
+}
+
+export function getWorkout(accessToken: string, workoutId: string) {
+  return request<{ workout: Workout }>(`/api/workouts/${workoutId}`, {}, accessToken);
+}
+
+export function listWorkoutHistory(accessToken: string) {
+  return request<{ workouts: WorkoutHistoryItem[] }>('/api/workouts/history', {}, accessToken);
+}
+
+export function logWorkoutSet(
+  accessToken: string,
+  workoutId: string,
+  set: {
+    sessionExerciseId: string;
+    setNumber: number;
+    setType?: LoggedSet['setType'];
+    weightKg?: number | null;
+    reps: number;
+    rir?: number | null;
+  }
+) {
+  return request<{ set: LoggedSet }>(`/api/workouts/${workoutId}/sets`, {
+    method: 'POST',
+    body: JSON.stringify(set),
+  }, accessToken);
+}
+
+export function completeWorkout(accessToken: string, workoutId: string) {
+  return request<{ workout: Workout }>(`/api/workouts/${workoutId}/complete`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  }, accessToken);
+}
+
+export function cancelWorkout(accessToken: string, workoutId: string) {
+  return request<{ workout: Workout }>(`/api/workouts/${workoutId}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  }, accessToken);
 }

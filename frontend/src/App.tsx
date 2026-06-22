@@ -3,15 +3,24 @@ import {
   AuthUser,
   Profile,
   Routine,
+  Workout,
+  WorkoutHistoryItem,
+  cancelWorkout,
+  completeWorkout,
   generateRoutine,
   getMe,
   getProfile,
   getRoutine,
+  getWorkout,
   listRoutines,
+  listWorkoutHistory,
+  logWorkoutSet,
   login,
   register,
+  startWorkout,
   updateProfile,
 } from './api';
+import { WorkoutHistory, WorkoutLogger } from './components/WorkoutLogger';
 
 type AuthMode = 'login' | 'register';
 
@@ -98,6 +107,9 @@ function App() {
   const [generating, setGenerating] = useState(false);
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
+  const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistoryItem[]>([]);
+  const [workoutLoading, setWorkoutLoading] = useState(false);
 
   const isSignedIn = !!session?.accessToken;
 
@@ -132,10 +144,11 @@ function App() {
 
     async function loadSession() {
       try {
-        const [me, currentProfile, routineList] = await Promise.all([
+        const [me, currentProfile, routineList, history] = await Promise.all([
           getMe(session!.accessToken),
           getProfile(session!.accessToken),
           listRoutines(session!.accessToken),
+          listWorkoutHistory(session!.accessToken),
         ]);
 
         setUser({ id: me.id, email: me.email, createdAt: me.createdAt });
@@ -153,6 +166,13 @@ function App() {
           const latest = await getRoutine(session!.accessToken, routineList.routines[0].id);
           setRoutine(latest.routine);
           setActiveDayIndex(0);
+        }
+
+        setWorkoutHistory(history.workouts);
+        const inProgress = history.workouts.find((workout) => workout.status === 'in_progress');
+        if (inProgress) {
+          const currentWorkout = await getWorkout(session!.accessToken, inProgress.id);
+          setActiveWorkout(currentWorkout.workout);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not load your session');
@@ -229,6 +249,85 @@ function App() {
     }
   }
 
+  async function refreshWorkoutHistory(accessToken: string) {
+    const history = await listWorkoutHistory(accessToken);
+    setWorkoutHistory(history.workouts);
+  }
+
+  async function handleStartWorkout(routineDayId: string) {
+    if (!session?.accessToken) return;
+
+    setWorkoutLoading(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const response = await startWorkout(session.accessToken, routineDayId);
+      setActiveWorkout(response.workout);
+      await refreshWorkoutHistory(session.accessToken);
+      setMessage('Workout started.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not start workout');
+    } finally {
+      setWorkoutLoading(false);
+    }
+  }
+
+  async function handleLogSet(
+    sessionExerciseId: string,
+    setNumber: number,
+    draft: { weightKg: string; reps: string; rir: string }
+  ) {
+    if (!session?.accessToken || !activeWorkout) return;
+
+    setError('');
+    try {
+      await logWorkoutSet(session.accessToken, activeWorkout.id, {
+        sessionExerciseId,
+        setNumber,
+        weightKg: draft.weightKg === '' ? null : Number(draft.weightKg),
+        reps: Number(draft.reps),
+        rir: draft.rir === '' ? null : Number(draft.rir),
+      });
+      const refreshed = await getWorkout(session.accessToken, activeWorkout.id);
+      setActiveWorkout(refreshed.workout);
+      setMessage('Set logged.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not log set');
+      throw err;
+    }
+  }
+
+  async function handleCompleteWorkout() {
+    if (!session?.accessToken || !activeWorkout) return;
+
+    setError('');
+    try {
+      await completeWorkout(session.accessToken, activeWorkout.id);
+      setActiveWorkout(null);
+      await refreshWorkoutHistory(session.accessToken);
+      setMessage('Workout completed.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not complete workout');
+      throw err;
+    }
+  }
+
+  async function handleCancelWorkout() {
+    if (!session?.accessToken || !activeWorkout) return;
+
+    setError('');
+    try {
+      await cancelWorkout(session.accessToken, activeWorkout.id);
+      setActiveWorkout(null);
+      await refreshWorkoutHistory(session.accessToken);
+      setMessage('Workout cancelled.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not cancel workout');
+      throw err;
+    }
+  }
+
   function logout() {
     localStorage.removeItem(sessionKey);
     setSession(null);
@@ -236,6 +335,8 @@ function App() {
     setProfile(defaultProfile);
     setRoutine(null);
     setActiveDayIndex(0);
+    setActiveWorkout(null);
+    setWorkoutHistory([]);
     setMessage('');
     setError('');
   }
@@ -317,6 +418,15 @@ function App() {
               Log out
             </button>
           </div>
+
+          {activeWorkout && (
+            <WorkoutLogger
+              workout={activeWorkout}
+              onLogSet={handleLogSet}
+              onComplete={handleCompleteWorkout}
+              onCancel={handleCancelWorkout}
+            />
+          )}
 
           <form onSubmit={handleProfileSubmit} className="profile-grid">
             <label>
@@ -456,8 +566,13 @@ function App() {
               routine={routine}
               activeDayIndex={activeDayIndex}
               onDayChange={setActiveDayIndex}
+              onStartWorkout={handleStartWorkout}
+              workoutLoading={workoutLoading}
+              hasActiveWorkout={!!activeWorkout}
             />
           )}
+
+          <WorkoutHistory workouts={workoutHistory} />
         </section>
       )}
     </main>
@@ -482,10 +597,16 @@ function RoutineView({
   routine,
   activeDayIndex,
   onDayChange,
+  onStartWorkout,
+  workoutLoading,
+  hasActiveWorkout,
 }: {
   routine: Routine;
   activeDayIndex: number;
   onDayChange: (index: number) => void;
+  onStartWorkout: (routineDayId: string) => Promise<void>;
+  workoutLoading: boolean;
+  hasActiveWorkout: boolean;
 }) {
   const activeDay = routine.days[activeDayIndex] ?? routine.days[0];
   if (!activeDay) return null;
@@ -525,7 +646,17 @@ function RoutineView({
           <p className="section-label">Day {activeDay.dayNumber}</p>
           <h3>{activeDay.name}</h3>
         </div>
-        <p>{activeDay.focus.join(' / ')}</p>
+        <div className="day-actions">
+          <p>{activeDay.focus.join(' / ')}</p>
+          <button
+            type="button"
+            className="primary-button"
+            disabled={workoutLoading || hasActiveWorkout}
+            onClick={() => onStartWorkout(activeDay.id)}
+          >
+            {hasActiveWorkout ? 'Workout in progress' : workoutLoading ? 'Starting...' : 'Start workout'}
+          </button>
+        </div>
       </div>
 
       <div className="exercise-list">

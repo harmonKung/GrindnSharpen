@@ -400,6 +400,19 @@ textarea:focus {
   text-transform: capitalize;
 }
 
+.day-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.day-actions p {
+  margin: 0;
+  color: #8a6c58;
+  font-size: 0.82rem;
+  text-transform: capitalize;
+}
+
 .exercise-list {
   border-top: 1px solid #decabb;
 }
@@ -440,6 +453,192 @@ textarea:focus {
 .exercise-prescription,
 .exercise-rest {
   text-align: right;
+}
+
+.workout-logger {
+  margin-bottom: 38px;
+  padding: 24px 0 34px;
+  border-top: 2px solid #d95d16;
+  border-bottom: 1px solid #e8d8cb;
+}
+
+.workout-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.workout-header h2 {
+  margin-bottom: 5px;
+}
+
+.workout-header > div:first-child > p:last-child {
+  margin-bottom: 0;
+  color: #7b6655;
+}
+
+.workout-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.workout-exercises {
+  display: grid;
+  gap: 28px;
+}
+
+.workout-exercise {
+  min-width: 0;
+}
+
+.workout-exercise-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+
+.workout-exercise-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.workout-exercise-heading > div > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #d95d16;
+  font-weight: 800;
+}
+
+.workout-exercise-heading h3,
+.workout-exercise-heading p {
+  margin-bottom: 0;
+}
+
+.workout-exercise-heading h3 {
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-size: 1.2rem;
+}
+
+.workout-exercise-heading p {
+  color: #7b6655;
+  font-size: 0.82rem;
+  text-transform: capitalize;
+}
+
+.set-table-heading,
+.set-row {
+  display: grid;
+  grid-template-columns: 42px repeat(3, minmax(64px, 1fr)) minmax(74px, auto);
+  gap: 8px;
+  align-items: center;
+}
+
+.set-table-heading {
+  padding: 0 2px 6px;
+  color: #8a7565;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.set-row {
+  min-height: 54px;
+  border-top: 1px solid #eadfd5;
+}
+
+.set-row > strong {
+  color: #b95116;
+  text-align: center;
+}
+
+.set-row input {
+  min-width: 0;
+  min-height: 40px;
+  padding: 7px 8px;
+  text-align: center;
+}
+
+.set-button {
+  min-height: 40px;
+  border: 1px solid #d95d16;
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #a94310;
+  background: #ffffff;
+  font-weight: 800;
+}
+
+.set-button.saved {
+  border-color: #c6d8c1;
+  color: #315d2e;
+  background: #e7f2e3;
+}
+
+.set-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.workout-history {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid #e8d8cb;
+}
+
+.history-list {
+  margin-top: 18px;
+  border-top: 1px solid #decabb;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) 70px 110px auto;
+  gap: 16px;
+  align-items: center;
+  min-height: 66px;
+  border-bottom: 1px solid #eadfd5;
+}
+
+.history-row > div strong,
+.history-row > div span {
+  display: block;
+}
+
+.history-row > div span {
+  margin-top: 3px;
+  color: #8a7565;
+  font-size: 0.75rem;
+}
+
+.history-status {
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: #7b6655;
+  background: #f4e5d7;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.history-status.completed {
+  color: #315d2e;
+  background: #e7f2e3;
+}
+
+.history-status.cancelled {
+  color: #7a231d;
+  background: #f8dddd;
 }
 
 @media (max-width: 900px) {
@@ -496,6 +695,41 @@ textarea:focus {
 
   .routine-meta {
     justify-content: flex-start;
+  }
+
+  .day-actions,
+  .workout-header,
+  .workout-exercise-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workout-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .set-table-heading,
+  .set-row {
+    grid-template-columns: 32px repeat(3, minmax(48px, 1fr)) 66px;
+    gap: 5px;
+  }
+
+  .set-row input {
+    padding-inline: 4px;
+  }
+
+  .set-button {
+    padding-inline: 6px;
+  }
+
+  .history-row {
+    grid-template-columns: minmax(130px, 1fr) 60px auto;
+    gap: 10px;
+  }
+
+  .history-row > div:nth-child(3) {
+    display: none;
   }
 
   .exercise-row {
