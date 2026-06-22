@@ -101,6 +101,17 @@ function App() {
 
   const isSignedIn = !!session?.accessToken;
 
+  useEffect(() => {
+    if (!message && !error) return;
+
+    const timeout = window.setTimeout(() => {
+      setMessage('');
+      setError('');
+    }, 800);
+
+    return () => window.clearTimeout(timeout);
+  }, [message, error]);
+
   const profileCompleteScore = useMemo(() => {
     const fields = [
       profile.displayName,
@@ -301,6 +312,7 @@ function App() {
               <h2>Training profile</h2>
               <p>{user?.email}</p>
             </div>
+            <Feedback message={message} error={error} />
             <button className="ghost-button" type="button" onClick={logout}>
               Log out
             </button>
@@ -439,8 +451,6 @@ function App() {
             </div>
           </form>
 
-          <Feedback message={message} error={error} />
-
           {routine && (
             <RoutineView
               routine={routine}
@@ -458,7 +468,11 @@ function Feedback({ message, error }: { message: string; error: string }) {
   if (!message && !error) return null;
 
   return (
-    <div className={error ? 'feedback error' : 'feedback'}>
+    <div
+      className={error ? 'feedback toast error' : 'feedback toast'}
+      role={error ? 'alert' : 'status'}
+      aria-live="polite"
+    >
       {error || message}
     </div>
   );
