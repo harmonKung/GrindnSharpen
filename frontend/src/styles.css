@@ -73,9 +73,9 @@ p {
   margin-bottom: 18px;
   color: #fff8ef;
   font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
-  font-size: 2.75rem;
-  font-weight: 800;
-  line-height: 1;
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1.15;
   letter-spacing: 0;
 }
 
@@ -213,7 +213,7 @@ textarea:focus {
   }
 
   .hero-line {
-    font-size: 2.15rem;
+    font-size: 1.55rem;
   }
 }
 
@@ -474,7 +474,7 @@ textarea:focus {
   }
 
   .hero-line {
-    font-size: 1.9rem;
+    font-size: 1.45rem;
   }
 
   .profile-grid,
@@ -513,6 +513,6 @@ textarea:focus {
   }
 
   .hero-line {
-    font-size: 1.7rem;
+    font-size: 1.3rem;
   }
 }
