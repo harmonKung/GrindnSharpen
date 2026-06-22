@@ -178,6 +178,82 @@ CREATE INDEX IF NOT EXISTS idx_routine_exercises_day_id ON routine_exercises(rou
 CREATE INDEX IF NOT EXISTS idx_routine_exercises_exercise_id ON routine_exercises(exercise_id);
 
 
+-- WORKOUT SESSIONS
+
+CREATE TABLE IF NOT EXISTS workout_sessions (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  routine_id      UUID REFERENCES routines(id) ON DELETE SET NULL,
+  routine_day_id  UUID REFERENCES routine_days(id) ON DELETE SET NULL,
+  name            VARCHAR(120) NOT NULL,
+  status          VARCHAR(20) NOT NULL DEFAULT 'in_progress'
+    CHECK (status IN ('in_progress', 'completed', 'cancelled')),
+  started_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at    TIMESTAMPTZ,
+  notes           TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (completed_at IS NULL OR completed_at >= started_at)
+);
+
+CREATE INDEX IF NOT EXISTS idx_workout_sessions_user_id ON workout_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_workout_sessions_user_status ON workout_sessions(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_workout_sessions_routine_id ON workout_sessions(routine_id);
+
+
+-- EXERCISES PERFORMED IN A WORKOUT
+
+CREATE TABLE IF NOT EXISTS workout_session_exercises (
+  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workout_session_id    UUID NOT NULL REFERENCES workout_sessions(id) ON DELETE CASCADE,
+  exercise_id           UUID NOT NULL REFERENCES exercises(id),
+  routine_exercise_id   UUID REFERENCES routine_exercises(id) ON DELETE SET NULL,
+  exercise_order        SMALLINT NOT NULL CHECK (exercise_order > 0),
+  prescribed_sets       SMALLINT CHECK (prescribed_sets BETWEEN 1 AND 20),
+  prescribed_rep_min    SMALLINT CHECK (prescribed_rep_min > 0),
+  prescribed_rep_max    SMALLINT CHECK (
+    prescribed_rep_max IS NULL OR prescribed_rep_max >= prescribed_rep_min
+  ),
+  target_rir            SMALLINT CHECK (target_rir BETWEEN 0 AND 5),
+  rest_seconds          SMALLINT CHECK (rest_seconds BETWEEN 15 AND 600),
+  notes                 TEXT,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (workout_session_id, exercise_order)
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_exercises_session_id
+  ON workout_session_exercises(workout_session_id);
+CREATE INDEX IF NOT EXISTS idx_session_exercises_exercise_id
+  ON workout_session_exercises(exercise_id);
+
+
+-- INDIVIDUAL LOGGED SETS
+
+CREATE TABLE IF NOT EXISTS logged_sets (
+  id                           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workout_session_exercise_id  UUID NOT NULL
+    REFERENCES workout_session_exercises(id) ON DELETE CASCADE,
+  set_number                   SMALLINT NOT NULL CHECK (set_number > 0),
+  set_type                     VARCHAR(20) NOT NULL DEFAULT 'working'
+    CHECK (set_type IN ('warmup', 'working', 'drop', 'failure')),
+  weight_kg                    DECIMAL(7,2) CHECK (weight_kg >= 0),
+  reps                         SMALLINT NOT NULL CHECK (reps BETWEEN 0 AND 1000),
+  rir                          SMALLINT CHECK (rir BETWEEN 0 AND 10),
+  rpe                          DECIMAL(3,1) CHECK (rpe BETWEEN 1 AND 10),
+  is_completed                 BOOLEAN NOT NULL DEFAULT TRUE,
+  completed_at                 TIMESTAMPTZ DEFAULT NOW(),
+  notes                        TEXT,
+  created_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (workout_session_exercise_id, set_type, set_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_logged_sets_session_exercise_id
+  ON logged_sets(workout_session_exercise_id);
+CREATE INDEX IF NOT EXISTS idx_logged_sets_completed_at ON logged_sets(completed_at);
+
+
 -- AUTO-UPDATE updated_at trigger
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -216,4 +292,19 @@ CREATE TRIGGER update_routine_days_updated_at
 DROP TRIGGER IF EXISTS update_routine_exercises_updated_at ON routine_exercises;
 CREATE TRIGGER update_routine_exercises_updated_at
   BEFORE UPDATE ON routine_exercises
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_workout_sessions_updated_at ON workout_sessions;
+CREATE TRIGGER update_workout_sessions_updated_at
+  BEFORE UPDATE ON workout_sessions
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_workout_session_exercises_updated_at ON workout_session_exercises;
+CREATE TRIGGER update_workout_session_exercises_updated_at
+  BEFORE UPDATE ON workout_session_exercises
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_logged_sets_updated_at ON logged_sets;
+CREATE TRIGGER update_logged_sets_updated_at
+  BEFORE UPDATE ON logged_sets
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
