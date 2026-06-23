@@ -1,38 +1,130 @@
 # GrindnSharpen
-Full stack fitness app. Personalized bodybuilding routines based on user's goals and information while using AI.
 
-stack
-    frontend - react, typescript, vite
-    backend - node.js, express, typescript
-    database - postgresql
-    auth - jwt
-    ai - openai
-    infra - docker, deployable to aws/render/railway/fly.io
+GrindnSharpen is a Full stack fitness app. Personalized bodybuilding routines based on user's goals and information while using AI.
 
+## Tech Stack
 
-quick start using docker
-git clone <your repo>
-cd grindnsharpen
+- **Frontend:** React, TypeScript, Vite
+- **Backend:** Node.js, Express, TypeScript
+- **Database:** PostgreSQL
+- **Authentication:** JWT
+- **Infrastructure:** Docker
 
-# create your backend .env
-    cp backend/.env.example backend/.env
+OpenAI-powered routine generation or coaching chat and cloud deployment are planned future additions. The current routine generator is deterministic and does not require an API key.
 
-local setup
-    npm install
-    cp .env.example .env
-    npm run db:migrate
-    npm run dev
+## Quick Start
 
-frontend setup
-    cd frontend
-    npm install
-    npm run dev
+### Prerequisites
 
-local URLs
-    backend health - http://localhost:4000/health
-    frontend - http://localhost:5173
+- Node.js 20+
+- npm
+- PostgreSQL 16+, either installed locally or run through Docker
+- Docker Desktop, if using the included Compose configuration
 
-notes
-    keep .env private and only commit .env.example
-    make sure PostgreSQL is running before npm run db:migrate
+From the repository root:
 
+```bash
+npm install
+npm --prefix frontend install
+cp .env.example .env
+cp frontend/.env.example frontend/.env
+```
+
+Update `.env` with your PostgreSQL password and secure JWT secrets.
+
+Start only PostgreSQL with Docker:
+
+```bash
+docker compose -f src/docker-compose.yml up -d db
+```
+
+The Docker database uses `postgres` as its development password. Match that value in your local `.env`, then initialize the database:
+
+```bash
+npm run db:migrate
+npm run db:seed
+```
+
+Run the backend and frontend in separate terminals:
+
+```bash
+npm run dev
+```
+
+```bash
+npm --prefix frontend run dev
+```
+
+Open:
+
+- Frontend: http://localhost:5173
+- API health check: http://localhost:4000/health
+
+## Current Features
+
+- JWT authentication with access and refresh tokens
+- Editable training profiles with persistent kg/lb preferences
+- Equipment-aware routine generation
+- Focused workout logging with reps, weight, and RIR
+- Previous-performance targets and progressive-overload suggestions
+- Workout history with deletion controls
+- Body-weight check-ins, trends, and deletion controls
+- Weekly training metrics, strength trends, and personal records
+- Responsive desktop and mobile interface
+
+## Environment Variables
+
+Backend variables are documented in `.env.example`:
+
+| Variable | Purpose |
+| --- | --- |
+| `PORT` | Express server port |
+| `DB_HOST` | PostgreSQL host |
+| `DB_PORT` | PostgreSQL port |
+| `DB_NAME` | Database name |
+| `DB_USER` | Database user |
+| `DB_PASSWORD` | Database password |
+| `JWT_ACCESS_SECRET` | Access-token signing secret |
+| `JWT_REFRESH_SECRET` | Refresh-token signing secret |
+| `FRONTEND_URL` | Allowed CORS origin |
+
+The frontend uses `VITE_API_URL`, documented in `frontend/.env.example`.
+
+## Useful Commands
+
+```bash
+npm run dev                 # Start the backend in development mode
+npm run build               # Compile the backend
+npm run db:migrate          # Apply schema.sql safely
+npm run db:seed             # Seed the exercise catalog
+npm --prefix frontend run dev
+npm --prefix frontend run build
+```
+
+## API Overview
+
+All protected endpoints require `Authorization: Bearer <access-token>`.
+
+- `/api/auth` - registration, login, refresh, logout, current user
+- `/api/profile` - profile details and preferences
+- `/api/routines` - generate and retrieve routines
+- `/api/workouts` - start, log, complete, resume, delete, and list workouts
+- `/api/progress` - dashboard summary, exercise history, and body-weight logs
+
+## Project Structure
+
+```text
+frontend/        React and Vite client
+src/controllers  Express request handlers
+src/routes       API route definitions
+src/services     Routine and progression logic
+src/db           PostgreSQL connection and seed scripts
+schema.sql       Idempotent database schema
+```
+
+## Security Notes
+
+- Never commit `.env` files or real credentials.
+- Use long, unique JWT secrets outside local development.
+- Docker Compose defaults are for local development only.
+- Rotate any credential that has previously been committed publicly.
