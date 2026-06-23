@@ -523,6 +523,22 @@ textarea:focus {
   margin-bottom: 0;
 }
 
+.progression-cue {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 12px 42px;
+  padding-left: 10px;
+  border-left: 3px solid #d95d16;
+  color: #6f5847;
+  font-size: 0.82rem;
+}
+
+.progression-cue strong {
+  flex: 0 0 auto;
+  color: #a94310;
+}
+
 .workout-exercise-heading h3 {
   font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
   font-size: 1.2rem;
@@ -556,9 +572,21 @@ textarea:focus {
   border-top: 1px solid #eadfd5;
 }
 
-.set-row > strong {
+.set-index {
+  display: grid;
+  justify-items: center;
+  line-height: 1.1;
+}
+
+.set-index strong {
   color: #b95116;
-  text-align: center;
+}
+
+.set-index small {
+  margin-top: 4px;
+  color: #8a7565;
+  font-size: 0.62rem;
+  white-space: nowrap;
 }
 
 .set-row input {
@@ -707,6 +735,13 @@ textarea:focus {
   .workout-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .progression-cue {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+    margin-left: 0;
   }
 
   .set-table-heading,
