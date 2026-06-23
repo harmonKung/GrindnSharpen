@@ -15,7 +15,7 @@ type WorkoutLoggerProps = {
     draft: SetDraft
   ) => Promise<void>;
   onComplete: () => Promise<void>;
-  onCancel: () => Promise<void>;
+  onExit: () => void;
 };
 
 function draftKey(exerciseId: string, setNumber: number) {
@@ -26,7 +26,7 @@ export function WorkoutLogger({
   workout,
   onLogSet,
   onComplete,
-  onCancel,
+  onExit,
 }: WorkoutLoggerProps) {
   const [drafts, setDrafts] = useState<Record<string, SetDraft>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -78,11 +78,10 @@ export function WorkoutLogger({
     }
   }
 
-  async function finish(action: 'complete' | 'cancel') {
+  async function finish() {
     setFinishing(true);
     try {
-      if (action === 'complete') await onComplete();
-      else await onCancel();
+      await onComplete();
     } finally {
       setFinishing(false);
     }
@@ -110,17 +109,17 @@ export function WorkoutLogger({
             type="button"
             className="ghost-button"
             disabled={finishing}
-            onClick={() => finish('cancel')}
+            onClick={onExit}
           >
-            Cancel
+            Exit
           </button>
           <button
             type="button"
             className="primary-button"
             disabled={finishing}
-            onClick={() => finish('complete')}
+            onClick={finish}
           >
-            {finishing ? 'Finishing...' : 'Complete workout'}
+            {finishing ? 'Finishing...' : 'Finish workout'}
           </button>
         </div>
       </div>

@@ -107,6 +107,46 @@ export type WorkoutExercise = {
   restSeconds: number | null;
   notes: string | null;
   sets: LoggedSet[];
+  previousPerformance: PreviousPerformance | null;
+  recommendation: ProgressionRecommendation;
+};
+
+export type PerformanceSet = {
+  setNumber: number;
+  weightKg: number | null;
+  reps: number;
+  rir: number | null;
+};
+
+export type PreviousPerformance = {
+  workoutId: string;
+  completedAt: string;
+  sets: PerformanceSet[];
+};
+
+export type ProgressionRecommendation = {
+  action: 'start' | 'add_weight' | 'add_reps' | 'repeat';
+  weightKg: number | null;
+  reps: number | null;
+  message: string;
+};
+
+export type ExerciseHistory = {
+  exercise: {
+    id: string;
+    name: string;
+    primaryMuscle: string;
+  };
+  history: Array<{
+    workoutId: string;
+    workoutName: string;
+    completedAt: string;
+    repMin: number | null;
+    repMax: number | null;
+    targetRir: number | null;
+    sets: PerformanceSet[];
+  }>;
+  recommendation: ProgressionRecommendation;
 };
 
 export type Workout = {
@@ -228,6 +268,14 @@ export function getWorkout(accessToken: string, workoutId: string) {
 
 export function listWorkoutHistory(accessToken: string) {
   return request<{ workouts: WorkoutHistoryItem[] }>('/api/workouts/history', {}, accessToken);
+}
+
+export function getExerciseHistory(accessToken: string, exerciseId: string, limit = 10) {
+  return request<ExerciseHistory>(
+    `/api/progress/exercises/${exerciseId}?limit=${limit}`,
+    {},
+    accessToken
+  );
 }
 
 export function logWorkoutSet(

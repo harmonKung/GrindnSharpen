@@ -462,6 +462,12 @@ textarea:focus {
   border-bottom: 1px solid #e8d8cb;
 }
 
+.workout-page .workout-logger {
+  margin-bottom: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .workout-header {
   display: flex;
   align-items: flex-start;

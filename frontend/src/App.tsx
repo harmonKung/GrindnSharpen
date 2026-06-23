@@ -5,7 +5,6 @@ import {
   Routine,
   Workout,
   WorkoutHistoryItem,
-  cancelWorkout,
   completeWorkout,
   generateRoutine,
   getMe,
@@ -108,6 +107,7 @@ function App() {
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
+  const [workoutScreenOpen, setWorkoutScreenOpen] = useState(false);
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistoryItem[]>([]);
   const [workoutLoading, setWorkoutLoading] = useState(false);
 
@@ -173,6 +173,7 @@ function App() {
         if (inProgress) {
           const currentWorkout = await getWorkout(session!.accessToken, inProgress.id);
           setActiveWorkout(currentWorkout.workout);
+          setWorkoutScreenOpen(true);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not load your session');
@@ -264,6 +265,7 @@ function App() {
     try {
       const response = await startWorkout(session.accessToken, routineDayId);
       setActiveWorkout(response.workout);
+      setWorkoutScreenOpen(true);
       await refreshWorkoutHistory(session.accessToken);
       setMessage('Workout started.');
     } catch (err) {
@@ -305,25 +307,11 @@ function App() {
     try {
       await completeWorkout(session.accessToken, activeWorkout.id);
       setActiveWorkout(null);
+      setWorkoutScreenOpen(false);
       await refreshWorkoutHistory(session.accessToken);
       setMessage('Workout completed.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not complete workout');
-      throw err;
-    }
-  }
-
-  async function handleCancelWorkout() {
-    if (!session?.accessToken || !activeWorkout) return;
-
-    setError('');
-    try {
-      await cancelWorkout(session.accessToken, activeWorkout.id);
-      setActiveWorkout(null);
-      await refreshWorkoutHistory(session.accessToken);
-      setMessage('Workout cancelled.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not cancel workout');
       throw err;
     }
   }
@@ -336,6 +324,7 @@ function App() {
     setRoutine(null);
     setActiveDayIndex(0);
     setActiveWorkout(null);
+    setWorkoutScreenOpen(false);
     setWorkoutHistory([]);
     setMessage('');
     setError('');
@@ -406,6 +395,15 @@ function App() {
 
           <Feedback message={message} error={error} />
         </section>
+      ) : activeWorkout && workoutScreenOpen ? (
+        <section className="work-panel workout-page">
+          <WorkoutLogger
+            workout={activeWorkout}
+            onLogSet={handleLogSet}
+            onComplete={handleCompleteWorkout}
+            onExit={() => setWorkoutScreenOpen(false)}
+          />
+        </section>
       ) : (
         <section className="work-panel">
           <div className="panel-heading">
@@ -418,15 +416,6 @@ function App() {
               Log out
             </button>
           </div>
-
-          {activeWorkout && (
-            <WorkoutLogger
-              workout={activeWorkout}
-              onLogSet={handleLogSet}
-              onComplete={handleCompleteWorkout}
-              onCancel={handleCancelWorkout}
-            />
-          )}
 
           <form onSubmit={handleProfileSubmit} className="profile-grid">
             <label>
@@ -567,6 +556,7 @@ function App() {
               activeDayIndex={activeDayIndex}
               onDayChange={setActiveDayIndex}
               onStartWorkout={handleStartWorkout}
+              onResumeWorkout={() => setWorkoutScreenOpen(true)}
               workoutLoading={workoutLoading}
               hasActiveWorkout={!!activeWorkout}
             />
@@ -598,6 +588,7 @@ function RoutineView({
   activeDayIndex,
   onDayChange,
   onStartWorkout,
+  onResumeWorkout,
   workoutLoading,
   hasActiveWorkout,
 }: {
@@ -605,6 +596,7 @@ function RoutineView({
   activeDayIndex: number;
   onDayChange: (index: number) => void;
   onStartWorkout: (routineDayId: string) => Promise<void>;
+  onResumeWorkout: () => void;
   workoutLoading: boolean;
   hasActiveWorkout: boolean;
 }) {
@@ -651,10 +643,10 @@ function RoutineView({
           <button
             type="button"
             className="primary-button"
-            disabled={workoutLoading || hasActiveWorkout}
-            onClick={() => onStartWorkout(activeDay.id)}
+            disabled={workoutLoading}
+            onClick={() => hasActiveWorkout ? onResumeWorkout() : onStartWorkout(activeDay.id)}
           >
-            {hasActiveWorkout ? 'Workout in progress' : workoutLoading ? 'Starting...' : 'Start workout'}
+            {hasActiveWorkout ? 'Resume workout' : workoutLoading ? 'Starting...' : 'Start workout'}
           </button>
         </div>
       </div>
