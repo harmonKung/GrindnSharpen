@@ -71,7 +71,7 @@ Open:
 - Body-weight check-ins, trends, and deletion controls
 - Weekly training metrics, strength trends, and personal records
 - Responsive desktop and mobile interface
-- Isolated backend authentication API test suite
+- Isolated backend authentication and workout API test suites
 
 ## Environment Variables
 
