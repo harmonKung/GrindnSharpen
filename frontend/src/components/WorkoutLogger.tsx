@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Workout, WorkoutHistoryItem } from '../api';
+import { UnitPreference, formatWeight, fromKilograms } from '../units';
 
 type SetDraft = {
   weightKg: string;
@@ -9,13 +10,14 @@ type SetDraft = {
 
 type WorkoutLoggerProps = {
   workout: Workout;
+  unitPreference: UnitPreference;
   onLogSet: (
     sessionExerciseId: string,
     setNumber: number,
     draft: SetDraft
   ) => Promise<void>;
   onComplete: () => Promise<void>;
-  onCancel: () => Promise<void>;
+  onExit: () => void;
 };
 
 function draftKey(exerciseId: string, setNumber: number) {
@@ -26,7 +28,8 @@ export function WorkoutLogger({
   workout,
   onLogSet,
   onComplete,
-  onCancel,
+  onExit,
+  unitPreference,
 }: WorkoutLoggerProps) {
   const [drafts, setDrafts] = useState<Record<string, SetDraft>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -45,8 +48,8 @@ export function WorkoutLogger({
         const suggestedReps = exercise.recommendation.reps;
         nextDrafts[draftKey(exercise.id, setNumber)] = {
           weightKg: logged?.weightKg == null
-            ? suggestedWeight == null ? '' : String(suggestedWeight)
-            : String(logged.weightKg),
+            ? suggestedWeight == null ? '' : String(fromKilograms(suggestedWeight, unitPreference))
+            : String(fromKilograms(logged.weightKg, unitPreference)),
           reps: logged ? String(logged.reps) : suggestedReps == null ? '' : String(suggestedReps),
           rir: logged?.rir == null
             ? exercise.targetRir == null ? '' : String(exercise.targetRir)
@@ -56,7 +59,7 @@ export function WorkoutLogger({
     }
 
     setDrafts(nextDrafts);
-  }, [workout]);
+  }, [workout, unitPreference]);
 
   function updateDraft(key: string, field: keyof SetDraft, value: string) {
     setDrafts((current) => ({
@@ -78,11 +81,10 @@ export function WorkoutLogger({
     }
   }
 
-  async function finish(action: 'complete' | 'cancel') {
+  async function finish() {
     setFinishing(true);
     try {
-      if (action === 'complete') await onComplete();
-      else await onCancel();
+      await onComplete();
     } finally {
       setFinishing(false);
     }
@@ -110,17 +112,17 @@ export function WorkoutLogger({
             type="button"
             className="ghost-button"
             disabled={finishing}
-            onClick={() => finish('cancel')}
+            onClick={onExit}
           >
-            Cancel
+            Exit
           </button>
           <button
             type="button"
             className="primary-button"
             disabled={finishing}
-            onClick={() => finish('complete')}
+            onClick={finish}
           >
-            {finishing ? 'Finishing...' : 'Complete workout'}
+            {finishing ? 'Finishing...' : 'Finish workout'}
           </button>
         </div>
       </div>
@@ -149,7 +151,7 @@ export function WorkoutLogger({
 
             <div className="set-table-heading" aria-hidden="true">
               <span>Set / last</span>
-              <span>kg</span>
+              <span>{unitPreference}</span>
               <span>Reps</span>
               <span>RIR</span>
               <span>Status</span>
@@ -172,12 +174,12 @@ export function WorkoutLogger({
                     <strong>{setNumber}</strong>
                     <small>
                       {previous
-                        ? `${previous.weightKg ?? '-'} x ${previous.reps}`
+                        ? `${previous.weightKg == null ? '-' : fromKilograms(previous.weightKg, unitPreference)} x ${previous.reps}`
                         : '-'}
                     </small>
                   </span>
                   <input
-                    aria-label={`${exercise.name} set ${setNumber} weight in kilograms`}
+                    aria-label={`${exercise.name} set ${setNumber} weight in ${unitPreference === 'kg' ? 'kilograms' : 'pounds'}`}
                     type="number"
                     inputMode="decimal"
                     min="0"
@@ -221,8 +223,29 @@ export function WorkoutLogger({
   );
 }
 
-export function WorkoutHistory({ workouts }: { workouts: WorkoutHistoryItem[] }) {
-  if (workouts.length === 0) return null;
+export function WorkoutHistory({
+  workouts,
+  onDelete,
+  unitPreference,
+}: {
+  workouts: WorkoutHistoryItem[];
+  onDelete: (workoutId: string) => Promise<void>;
+  unitPreference: UnitPreference;
+}) {
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const loggedWorkouts = workouts.filter((workout) => workout.completedSetCount > 0);
+  if (loggedWorkouts.length === 0) return null;
+
+  async function removeWorkout(workoutId: string) {
+    setDeletingId(workoutId);
+    try {
+      await onDelete(workoutId);
+      setConfirmingId(null);
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <section className="workout-history">
@@ -231,7 +254,7 @@ export function WorkoutHistory({ workouts }: { workouts: WorkoutHistoryItem[] })
         <h2>Workout history</h2>
       </div>
       <div className="history-list">
-        {workouts.slice(0, 5).map((workout) => (
+        {loggedWorkouts.slice(0, 5).map((workout) => (
           <div className="history-row" key={workout.id}>
             <div>
               <strong>{workout.name}</strong>
@@ -242,10 +265,22 @@ export function WorkoutHistory({ workouts }: { workouts: WorkoutHistoryItem[] })
               <span>Sets</span>
             </div>
             <div>
-              <strong>{Math.round(Number(workout.totalVolumeKg)).toLocaleString()} kg</strong>
+              <strong>{formatWeight(workout.totalVolumeKg, unitPreference, 0)}</strong>
               <span>Volume</span>
             </div>
             <span className={`history-status ${workout.status}`}>{workout.status}</span>
+            <div className="history-delete-actions">
+              {confirmingId === workout.id ? (
+                <>
+                  <button type="button" className="confirm-delete" disabled={deletingId === workout.id} onClick={() => removeWorkout(workout.id)}>
+                    {deletingId === workout.id ? 'Deleting...' : 'Confirm'}
+                  </button>
+                  <button type="button" disabled={deletingId === workout.id} onClick={() => setConfirmingId(null)}>Cancel</button>
+                </>
+              ) : (
+                <button type="button" className="delete-trigger" onClick={() => setConfirmingId(workout.id)}>Delete</button>
+              )}
+            </div>
           </div>
         ))}
       </div>

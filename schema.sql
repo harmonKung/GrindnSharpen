@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   body_weight_kg      DECIMAL(5,2),
   height_cm           DECIMAL(5,1),
   body_fat_pct        DECIMAL(4,1),
+  unit_preference     VARCHAR(2) NOT NULL DEFAULT 'kg'
+    CHECK (unit_preference IN ('kg', 'lb')),
 
   -- Fitness profile
   experience_level    VARCHAR(20) NOT NULL DEFAULT 'beginner',
@@ -74,6 +76,9 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 );
 
 CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON user_profiles(user_id);
+
+ALTER TABLE user_profiles
+  ADD COLUMN IF NOT EXISTS unit_preference VARCHAR(2) NOT NULL DEFAULT 'kg';
 
 
 -- REFRESH TOKENS TABLE (JWT rotation)
@@ -254,6 +259,23 @@ CREATE INDEX IF NOT EXISTS idx_logged_sets_session_exercise_id
 CREATE INDEX IF NOT EXISTS idx_logged_sets_completed_at ON logged_sets(completed_at);
 
 
+-- BODY-WEIGHT CHECK-INS
+
+CREATE TABLE IF NOT EXISTS body_weight_logs (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  weight_kg    DECIMAL(6,2) NOT NULL CHECK (weight_kg BETWEEN 20 AND 500),
+  recorded_on  DATE NOT NULL DEFAULT CURRENT_DATE,
+  notes        VARCHAR(500),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, recorded_on)
+);
+
+CREATE INDEX IF NOT EXISTS idx_body_weight_logs_user_date
+  ON body_weight_logs(user_id, recorded_on DESC);
+
+
 -- AUTO-UPDATE updated_at trigger
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -307,4 +329,9 @@ CREATE TRIGGER update_workout_session_exercises_updated_at
 DROP TRIGGER IF EXISTS update_logged_sets_updated_at ON logged_sets;
 CREATE TRIGGER update_logged_sets_updated_at
   BEFORE UPDATE ON logged_sets
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_body_weight_logs_updated_at ON body_weight_logs;
+CREATE TRIGGER update_body_weight_logs_updated_at
+  BEFORE UPDATE ON body_weight_logs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

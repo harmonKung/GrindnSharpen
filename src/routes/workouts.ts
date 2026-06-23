@@ -3,6 +3,7 @@ import { body, param } from 'express-validator';
 import {
   cancelWorkout,
   completeWorkout,
+  deleteWorkout,
   getWorkout,
   listWorkoutHistory,
   startWorkout,
@@ -73,6 +74,8 @@ router.post(
   [param('id').isUUID(), body('notes').optional().isString().isLength({ max: 4000 })],
   cancelWorkout
 );
+
+router.delete('/:id', [param('id').isUUID()], deleteWorkout);
 
 router.get('/:id', [param('id').isUUID()], getWorkout);
 

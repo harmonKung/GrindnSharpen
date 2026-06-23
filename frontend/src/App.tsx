@@ -5,8 +5,8 @@ import {
   Routine,
   Workout,
   WorkoutHistoryItem,
-  cancelWorkout,
   completeWorkout,
+  deleteWorkout,
   generateRoutine,
   getMe,
   getProfile,
@@ -21,8 +21,11 @@ import {
   updateProfile,
 } from './api';
 import { WorkoutHistory, WorkoutLogger } from './components/WorkoutLogger';
+import { ProgressDashboard } from './components/ProgressDashboard';
+import { UnitPreference, formatWeight, fromKilograms, toKilograms } from './units';
 
 type AuthMode = 'login' | 'register';
+type MainView = 'profile' | 'routine' | 'progress';
 
 type Session = {
   accessToken: string;
@@ -40,6 +43,7 @@ const defaultProfile: Partial<Profile> = {
   daysPerWeek: 4,
   sessionDurationMin: 60,
   equipment: ['gym_full'],
+  unitPreference: 'kg',
   physiqueArchetype: 'lean_aesthetic',
   limitations: '',
 };
@@ -108,8 +112,12 @@ function App() {
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
+  const [workoutScreenOpen, setWorkoutScreenOpen] = useState(false);
   const [workoutHistory, setWorkoutHistory] = useState<WorkoutHistoryItem[]>([]);
   const [workoutLoading, setWorkoutLoading] = useState(false);
+  const [mainView, setMainView] = useState<MainView>('profile');
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileBeforeEdit, setProfileBeforeEdit] = useState<Partial<Profile> | null>(null);
 
   const isSignedIn = !!session?.accessToken;
 
@@ -173,6 +181,7 @@ function App() {
         if (inProgress) {
           const currentWorkout = await getWorkout(session!.accessToken, inProgress.id);
           setActiveWorkout(currentWorkout.workout);
+          setWorkoutScreenOpen(false);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not load your session');
@@ -221,6 +230,8 @@ function App() {
       const payload = buildProfilePayload(profile);
       const response = await updateProfile(session.accessToken, payload);
       setProfile({ ...profile, ...response.profile });
+      setEditingProfile(false);
+      setProfileBeforeEdit(null);
       setMessage('Profile saved.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save profile');
@@ -264,6 +275,7 @@ function App() {
     try {
       const response = await startWorkout(session.accessToken, routineDayId);
       setActiveWorkout(response.workout);
+      setWorkoutScreenOpen(true);
       await refreshWorkoutHistory(session.accessToken);
       setMessage('Workout started.');
     } catch (err) {
@@ -285,7 +297,7 @@ function App() {
       await logWorkoutSet(session.accessToken, activeWorkout.id, {
         sessionExerciseId,
         setNumber,
-        weightKg: draft.weightKg === '' ? null : Number(draft.weightKg),
+        weightKg: toKilograms(draft.weightKg, profile.unitPreference ?? 'kg'),
         reps: Number(draft.reps),
         rir: draft.rir === '' ? null : Number(draft.rir),
       });
@@ -305,6 +317,7 @@ function App() {
     try {
       await completeWorkout(session.accessToken, activeWorkout.id);
       setActiveWorkout(null);
+      setWorkoutScreenOpen(false);
       await refreshWorkoutHistory(session.accessToken);
       setMessage('Workout completed.');
     } catch (err) {
@@ -313,17 +326,20 @@ function App() {
     }
   }
 
-  async function handleCancelWorkout() {
-    if (!session?.accessToken || !activeWorkout) return;
+  async function handleDeleteWorkout(workoutId: string) {
+    if (!session?.accessToken) return;
 
     setError('');
     try {
-      await cancelWorkout(session.accessToken, activeWorkout.id);
-      setActiveWorkout(null);
+      await deleteWorkout(session.accessToken, workoutId);
+      if (activeWorkout?.id === workoutId) {
+        setActiveWorkout(null);
+        setWorkoutScreenOpen(false);
+      }
       await refreshWorkoutHistory(session.accessToken);
-      setMessage('Workout cancelled.');
+      setMessage('Workout deleted.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not cancel workout');
+      setError(err instanceof Error ? err.message : 'Could not delete workout');
       throw err;
     }
   }
@@ -336,7 +352,11 @@ function App() {
     setRoutine(null);
     setActiveDayIndex(0);
     setActiveWorkout(null);
+    setWorkoutScreenOpen(false);
     setWorkoutHistory([]);
+    setMainView('profile');
+    setEditingProfile(false);
+    setProfileBeforeEdit(null);
     setMessage('');
     setError('');
   }
@@ -406,11 +426,21 @@ function App() {
 
           <Feedback message={message} error={error} />
         </section>
+      ) : activeWorkout && workoutScreenOpen ? (
+        <section className="work-panel workout-page">
+          <WorkoutLogger
+            workout={activeWorkout}
+            unitPreference={profile.unitPreference ?? 'kg'}
+            onLogSet={handleLogSet}
+            onComplete={handleCompleteWorkout}
+            onExit={() => setWorkoutScreenOpen(false)}
+          />
+        </section>
       ) : (
         <section className="work-panel">
           <div className="panel-heading">
             <div>
-              <h2>Training profile</h2>
+              <h2>Training hub</h2>
               <p>{user?.email}</p>
             </div>
             <Feedback message={message} error={error} />
@@ -419,16 +449,42 @@ function App() {
             </button>
           </div>
 
-          {activeWorkout && (
-            <WorkoutLogger
-              workout={activeWorkout}
-              onLogSet={handleLogSet}
-              onComplete={handleCompleteWorkout}
-              onCancel={handleCancelWorkout}
-            />
+          <nav className="workspace-tabs" role="tablist" aria-label="Training sections">
+            <button type="button" role="tab" aria-selected={mainView === 'profile'} className={mainView === 'profile' ? 'active' : ''} onClick={() => setMainView('profile')}>
+              Training profile
+            </button>
+            <button type="button" role="tab" aria-selected={mainView === 'routine'} className={mainView === 'routine' ? 'active' : ''} onClick={() => setMainView('routine')}>
+              Routine
+            </button>
+            <button type="button" role="tab" aria-selected={mainView === 'progress'} className={mainView === 'progress' ? 'active' : ''} onClick={() => setMainView('progress')}>
+              Training trend
+            </button>
+          </nav>
+
+          {mainView === 'profile' && !editingProfile && (
+            <section className="profile-summary tab-page" role="tabpanel">
+              <div className="profile-summary-heading">
+                <div><p className="section-label">Your details</p><h2>{profile.displayName || 'Training profile'}</h2></div>
+                <button className="secondary-button" type="button" onClick={() => {
+                  setProfileBeforeEdit({ ...profile, equipment: [...(profile.equipment ?? [])] });
+                  setEditingProfile(true);
+                }}>Edit profile</button>
+              </div>
+              <dl className="profile-info-grid">
+                <div><dt>Experience</dt><dd>{profile.experienceLevel?.replace('_', ' ') || 'Not set'}</dd></div>
+                <div><dt>Primary goal</dt><dd>{profile.primaryGoal?.replace(/_/g, ' ') || 'Not set'}</dd></div>
+                <div><dt>Body weight</dt><dd>{formatWeight(profile.bodyWeightKg, profile.unitPreference ?? 'kg')}</dd></div>
+                <div><dt>Height</dt><dd>{profile.heightCm ? `${profile.heightCm} cm` : 'Not set'}</dd></div>
+                <div><dt>Training schedule</dt><dd>{profile.daysPerWeek ?? '-'} days / {profile.sessionDurationMin ?? '-'} min</dd></div>
+                <div><dt>Target physique</dt><dd>{profile.physiqueArchetype?.replace(/_/g, ' ') || 'Not set'}</dd></div>
+                <div><dt>Display units</dt><dd>{profile.unitPreference === 'lb' ? 'Pounds (lb)' : 'Kilograms (kg)'}</dd></div>
+                <div className="wide"><dt>Limitations</dt><dd>{profile.limitations || 'None listed'}</dd></div>
+              </dl>
+            </section>
           )}
 
-          <form onSubmit={handleProfileSubmit} className="profile-grid">
+          {mainView === 'profile' && editingProfile && (
+          <form onSubmit={handleProfileSubmit} className="profile-grid tab-page" role="tabpanel">
             <label>
               Display name
               <input
@@ -465,14 +521,29 @@ function App() {
             </label>
 
             <label>
-              Body weight kg
+              Body weight {profile.unitPreference ?? 'kg'}
               <input
                 type="number"
-                min="20"
-                max="500"
-                value={profile.bodyWeightKg ?? ''}
-                onChange={(event) => setProfile({ ...profile, bodyWeightKg: event.target.value })}
+                min={profile.unitPreference === 'lb' ? 44 : 20}
+                max={profile.unitPreference === 'lb' ? 1102 : 500}
+                step="0.1"
+                value={fromKilograms(profile.bodyWeightKg, profile.unitPreference ?? 'kg')}
+                onChange={(event) => setProfile({
+                  ...profile,
+                  bodyWeightKg: toKilograms(event.target.value, profile.unitPreference ?? 'kg') ?? '',
+                })}
               />
+            </label>
+
+            <label>
+              Display units
+              <select
+                value={profile.unitPreference ?? 'kg'}
+                onChange={(event) => setProfile({ ...profile, unitPreference: event.target.value as UnitPreference })}
+              >
+                <option value="kg">Kilograms (kg)</option>
+                <option value="lb">Pounds (lb)</option>
+              </select>
             </label>
 
             <label>
@@ -509,21 +580,6 @@ function App() {
             </label>
 
             <label>
-              Equipment
-              <select
-                value={profile.equipment?.[0] ?? 'gym_full'}
-                onChange={(event) => setProfile({ ...profile, equipment: [event.target.value] })}
-              >
-                <option value="gym_full">Full gym</option>
-                <option value="gym_basic">Basic gym</option>
-                <option value="home_dumbbells">Home dumbbells</option>
-                <option value="home_barbell">Home barbell</option>
-                <option value="resistance_bands">Resistance bands</option>
-                <option value="bodyweight_only">Bodyweight only</option>
-              </select>
-            </label>
-
-            <label>
               Target physique
               <select
                 value={profile.physiqueArchetype ?? 'lean_aesthetic'}
@@ -550,29 +606,73 @@ function App() {
               <button className="primary-button" disabled={loading}>
                 {loading ? 'Saving...' : 'Save profile'}
               </button>
-              <button
-                className="secondary-button"
-                type="button"
-                disabled={generating}
-                onClick={handleGenerateRoutine}
-              >
-                {generating ? 'Generating...' : routine ? 'Generate new routine' : 'Generate routine'}
-              </button>
+              <button className="ghost-button" type="button" onClick={() => {
+                if (profileBeforeEdit) setProfile(profileBeforeEdit);
+                setEditingProfile(false);
+                setProfileBeforeEdit(null);
+              }}>Cancel</button>
             </div>
           </form>
-
-          {routine && (
-            <RoutineView
-              routine={routine}
-              activeDayIndex={activeDayIndex}
-              onDayChange={setActiveDayIndex}
-              onStartWorkout={handleStartWorkout}
-              workoutLoading={workoutLoading}
-              hasActiveWorkout={!!activeWorkout}
-            />
           )}
 
-          <WorkoutHistory workouts={workoutHistory} />
+          {mainView === 'routine' && (
+            <section className="routine-workspace tab-page" role="tabpanel">
+              <div className="routine-controls">
+                <div>
+                  <p className="section-label">Routine setup</p>
+                  <h2>{routine ? 'Current routine' : 'Build your routine'}</h2>
+                </div>
+                <div className="routine-generator-controls">
+                  <label>
+                    Equipment
+                    <select
+                      value={profile.equipment?.[0] ?? 'gym_full'}
+                      onChange={(event) => setProfile({ ...profile, equipment: [event.target.value] })}
+                    >
+                      <option value="gym_full">Full gym</option>
+                      <option value="gym_basic">Basic gym</option>
+                      <option value="home_dumbbells">Home dumbbells</option>
+                      <option value="home_barbell">Home barbell</option>
+                      <option value="resistance_bands">Resistance bands</option>
+                      <option value="bodyweight_only">Bodyweight only</option>
+                    </select>
+                  </label>
+                  <button className="secondary-button" type="button" disabled={generating} onClick={handleGenerateRoutine}>
+                    {generating ? 'Generating...' : routine ? 'Generate new routine' : 'Generate routine'}
+                  </button>
+                </div>
+              </div>
+
+              {routine ? (
+                <RoutineView
+                  routine={routine}
+                  activeDayIndex={activeDayIndex}
+                  onDayChange={setActiveDayIndex}
+                  onStartWorkout={handleStartWorkout}
+                  onResumeWorkout={() => setWorkoutScreenOpen(true)}
+                  workoutLoading={workoutLoading}
+                  hasActiveWorkout={!!activeWorkout}
+                />
+              ) : (
+                <p className="routine-empty">Choose your equipment, then generate your first routine.</p>
+              )}
+            </section>
+          )}
+
+          {mainView === 'progress' && (
+            <div className="tab-page" role="tabpanel">
+              <ProgressDashboard
+                accessToken={session.accessToken}
+                currentWeight={profile.bodyWeightKg}
+                unitPreference={profile.unitPreference ?? 'kg'}
+                onWeightLogged={(weightKg) => setProfile((current) => ({
+                  ...current,
+                  bodyWeightKg: weightKg ?? '',
+                }))}
+              />
+              <WorkoutHistory workouts={workoutHistory} onDelete={handleDeleteWorkout} unitPreference={profile.unitPreference ?? 'kg'} />
+            </div>
+          )}
         </section>
       )}
     </main>
@@ -598,6 +698,7 @@ function RoutineView({
   activeDayIndex,
   onDayChange,
   onStartWorkout,
+  onResumeWorkout,
   workoutLoading,
   hasActiveWorkout,
 }: {
@@ -605,6 +706,7 @@ function RoutineView({
   activeDayIndex: number;
   onDayChange: (index: number) => void;
   onStartWorkout: (routineDayId: string) => Promise<void>;
+  onResumeWorkout: () => void;
   workoutLoading: boolean;
   hasActiveWorkout: boolean;
 }) {
@@ -651,10 +753,10 @@ function RoutineView({
           <button
             type="button"
             className="primary-button"
-            disabled={workoutLoading || hasActiveWorkout}
-            onClick={() => onStartWorkout(activeDay.id)}
+            disabled={workoutLoading}
+            onClick={() => hasActiveWorkout ? onResumeWorkout() : onStartWorkout(activeDay.id)}
           >
-            {hasActiveWorkout ? 'Workout in progress' : workoutLoading ? 'Starting...' : 'Start workout'}
+            {hasActiveWorkout ? 'Resume workout' : workoutLoading ? 'Starting...' : 'Start workout'}
           </button>
         </div>
       </div>

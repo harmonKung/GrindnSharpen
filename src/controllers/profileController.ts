@@ -28,6 +28,7 @@ export const getProfile = async (req: AuthRequest, res: Response): Promise<void>
       bodyWeightKg:      p.body_weight_kg,
       heightCm:          p.height_cm,
       bodyFatPct:        p.body_fat_pct,
+      unitPreference:    p.unit_preference,
       experienceLevel:   p.experience_level,
       primaryGoal:       p.primary_goal,
       secondaryGoal:     p.secondary_goal,
@@ -65,7 +66,7 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
     experienceLevel, primaryGoal, secondaryGoal,
     targetWeightKg, targetBodyFatPct,
     daysPerWeek, sessionDurationMin, preferredDays,
-    equipment, physiqueArchetype, limitations,
+    equipment, physiqueArchetype, limitations, unitPreference,
   } = req.body;
 
   try {
@@ -87,8 +88,9 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
         preferred_days       = COALESCE($14, preferred_days),
         equipment            = COALESCE($15, equipment),
         physique_archetype   = COALESCE($16, physique_archetype),
-        limitations          = COALESCE($17, limitations)
-      WHERE user_id = $18
+        limitations          = COALESCE($17, limitations),
+        unit_preference      = COALESCE($18, unit_preference)
+      WHERE user_id = $19
       RETURNING *`,
       [
         displayName, dateOfBirth, gender,
@@ -98,7 +100,7 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
         daysPerWeek, sessionDurationMin,
         preferredDays ? preferredDays : null,
         equipment ? equipment : null,
-        physiqueArchetype, limitations,
+        physiqueArchetype, limitations, unitPreference,
         req.user!.userId,
       ]
     );
@@ -139,6 +141,7 @@ export const saveOnboardingStep = async (req: AuthRequest, res: Response): Promi
       equipment:          'equipment',
       physiqueArchetype:  'physique_archetype',
       limitations:        'limitations',
+      unitPreference:     'unit_preference',
     };
 
     if (data) {

@@ -37,6 +37,7 @@ router.patch(
     body('equipment').optional().isArray(),
     body('physiqueArchetype').optional().isLength({ max: 50 }),
     body('limitations').optional().isString(),
+    body('unitPreference').optional().isIn(['kg', 'lb']),
   ],
   updateProfile
 );
