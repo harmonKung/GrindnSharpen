@@ -71,6 +71,7 @@ Open:
 - Body-weight check-ins, trends, and deletion controls
 - Weekly training metrics, strength trends, and personal records
 - Responsive desktop and mobile interface
+- Isolated backend authentication API test suite
 
 ## Environment Variables
 
@@ -97,6 +98,8 @@ npm run dev                 # Start the backend in development mode
 npm run build               # Compile the backend
 npm run db:migrate          # Apply schema.sql safely
 npm run db:seed             # Seed the exercise catalog
+npm test                    # Run backend API tests
+npm run test:watch          # Run backend tests in watch mode
 npm --prefix frontend run dev
 npm --prefix frontend run build
 ```
@@ -119,6 +122,7 @@ src/controllers  Express request handlers
 src/routes       API route definitions
 src/services     Routine and progression logic
 src/db           PostgreSQL connection and seed scripts
+tests/           Isolated backend API tests
 schema.sql       Idempotent database schema
 ```
 
