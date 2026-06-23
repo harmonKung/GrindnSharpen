@@ -300,6 +300,8 @@ export const listWorkoutHistory = async (req: AuthRequest, res: Response): Promi
        LEFT JOIN logged_sets ls ON ls.workout_session_exercise_id = wse.id
        WHERE ws.user_id = $1
        GROUP BY ws.id
+       HAVING ws.status = 'in_progress'
+          OR COUNT(ls.id) FILTER (WHERE ls.is_completed = TRUE) > 0
        ORDER BY ws.started_at DESC`,
       [req.user!.userId]
     );
@@ -462,6 +464,27 @@ export const cancelWorkout = async (req: AuthRequest, res: Response): Promise<vo
     await finishWorkout(req, res, 'cancelled');
   } catch (error) {
     console.error('Cancel workout error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const deleteWorkout = async (req: AuthRequest, res: Response): Promise<void> => {
+  if (hasValidationErrors(req, res)) return;
+
+  try {
+    const result = await query(
+      'DELETE FROM workout_sessions WHERE id = $1 AND user_id = $2 RETURNING id',
+      [req.params.id, req.user!.userId]
+    );
+
+    if (!result.rows[0]) {
+      res.status(404).json({ error: 'Workout not found' });
+      return;
+    }
+
+    res.json({ message: 'Workout deleted', workoutId: result.rows[0].id });
+  } catch (error) {
+    console.error('Delete workout error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

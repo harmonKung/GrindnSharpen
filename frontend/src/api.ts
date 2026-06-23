@@ -16,6 +16,7 @@ export type Profile = {
   bodyWeightKg?: string | number | null;
   heightCm?: string | number | null;
   bodyFatPct?: string | number | null;
+  unitPreference?: 'kg' | 'lb';
   experienceLevel?: string | null;
   primaryGoal?: string | null;
   secondaryGoal?: string | null;
@@ -149,6 +150,30 @@ export type ExerciseHistory = {
   recommendation: ProgressionRecommendation;
 };
 
+export type ProgressSummary = {
+  weekly: { workouts: number; sets: number; volumeKg: number };
+  bodyWeight: Array<{
+    id: string;
+    weightKg: number;
+    recordedOn: string;
+    notes: string | null;
+  }>;
+  personalRecords: Array<{
+    exerciseId: string;
+    name: string;
+    weightKg: number;
+    reps: number;
+    estimatedOneRepMax: number;
+    completedAt: string;
+  }>;
+  trackedExercises: Array<{
+    id: string;
+    name: string;
+    primaryMuscle: string;
+    lastTrainedAt: string;
+  }>;
+};
+
 export type Workout = {
   id: string;
   routineId: string | null;
@@ -278,6 +303,29 @@ export function getExerciseHistory(accessToken: string, exerciseId: string, limi
   );
 }
 
+export function getProgressSummary(accessToken: string) {
+  return request<ProgressSummary>('/api/progress/summary', {}, accessToken);
+}
+
+export function logBodyWeight(
+  accessToken: string,
+  entry: { weightKg: number; recordedOn?: string; notes?: string }
+) {
+  return request<{ entry: ProgressSummary['bodyWeight'][number] }>(
+    '/api/progress/body-weight',
+    { method: 'POST', body: JSON.stringify(entry) },
+    accessToken
+  );
+}
+
+export function deleteBodyWeight(accessToken: string, entryId: string) {
+  return request<{ message: string; latestWeightKg: number | null }>(
+    `/api/progress/body-weight/${entryId}`,
+    { method: 'DELETE' },
+    accessToken
+  );
+}
+
 export function logWorkoutSet(
   accessToken: string,
   workoutId: string,
@@ -307,5 +355,11 @@ export function cancelWorkout(accessToken: string, workoutId: string) {
   return request<{ workout: Workout }>(`/api/workouts/${workoutId}/cancel`, {
     method: 'POST',
     body: JSON.stringify({}),
+  }, accessToken);
+}
+
+export function deleteWorkout(accessToken: string, workoutId: string) {
+  return request<{ message: string; workoutId: string }>(`/api/workouts/${workoutId}`, {
+    method: 'DELETE',
   }, accessToken);
 }
