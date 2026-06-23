@@ -6,6 +6,7 @@ import authRoutes from './routes/auth';
 import profileRoutes from './routes/profile';
 import routineRoutes from './routes/routines';
 import workoutRoutes from './routes/workouts';
+import progressRoutes from './routes/progress';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/routines', routineRoutes);
 app.use('/api/workouts', workoutRoutes);
+app.use('/api/progress', progressRoutes);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

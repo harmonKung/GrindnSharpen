@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { validationResult } from 'express-validator';
 import { getClient, query } from '../db/database';
 import { AuthRequest } from '../middleware/auth';
+import { buildProgressionRecommendation, PerformanceSet } from '../services/progressionService';
 
 type WorkoutExerciseResponse = {
   id: string;
@@ -16,6 +17,12 @@ type WorkoutExerciseResponse = {
   restSeconds: number | null;
   notes: string | null;
   sets: Record<string, unknown>[];
+  previousPerformance: {
+    workoutId: string;
+    completedAt: string;
+    sets: PerformanceSet[];
+  } | null;
+  recommendation: ReturnType<typeof buildProgressionRecommendation>;
 };
 
 async function getWorkoutDetails(userId: string, workoutId: string) {
@@ -49,9 +56,62 @@ async function getWorkoutDetails(userId: string, workoutId: string) {
     [workout.id]
   );
 
+  const previousResult = await query(
+    `WITH current_exercises AS (
+       SELECT DISTINCT exercise_id
+       FROM workout_session_exercises
+       WHERE workout_session_id = $1
+     ), previous_exercises AS (
+       SELECT DISTINCT ON (wse.exercise_id)
+              wse.id AS session_exercise_id, wse.exercise_id,
+              ws.id AS workout_id, ws.completed_at
+       FROM workout_session_exercises wse
+       JOIN workout_sessions ws ON ws.id = wse.workout_session_id
+       JOIN current_exercises ce ON ce.exercise_id = wse.exercise_id
+       WHERE ws.user_id = $2 AND ws.status = 'completed' AND ws.id <> $1
+         AND EXISTS (
+           SELECT 1 FROM logged_sets previous_set
+           WHERE previous_set.workout_session_exercise_id = wse.id
+             AND previous_set.is_completed = TRUE
+             AND previous_set.set_type = 'working'
+         )
+       ORDER BY wse.exercise_id, ws.completed_at DESC
+     )
+     SELECT pe.exercise_id, pe.workout_id, pe.completed_at,
+            ls.set_number, ls.weight_kg, ls.reps, ls.rir
+     FROM previous_exercises pe
+     JOIN logged_sets ls ON ls.workout_session_exercise_id = pe.session_exercise_id
+     WHERE ls.is_completed = TRUE AND ls.set_type = 'working'
+     ORDER BY pe.exercise_id, ls.set_number`,
+    [workout.id, userId]
+  );
+
+  const previousByExercise = new Map<string, {
+    workoutId: string;
+    completedAt: string;
+    sets: PerformanceSet[];
+  }>();
+
+  for (const row of previousResult.rows) {
+    if (!previousByExercise.has(row.exercise_id)) {
+      previousByExercise.set(row.exercise_id, {
+        workoutId: row.workout_id,
+        completedAt: row.completed_at,
+        sets: [],
+      });
+    }
+    previousByExercise.get(row.exercise_id)!.sets.push({
+      setNumber: row.set_number,
+      weightKg: row.weight_kg === null ? null : Number(row.weight_kg),
+      reps: row.reps,
+      rir: row.rir,
+    });
+  }
+
   const exercises = new Map<string, WorkoutExerciseResponse>();
   for (const row of detailResult.rows) {
     if (!exercises.has(row.session_exercise_id)) {
+      const previousPerformance = previousByExercise.get(row.exercise_id) ?? null;
       exercises.set(row.session_exercise_id, {
         id: row.session_exercise_id,
         exerciseId: row.exercise_id,
@@ -65,6 +125,13 @@ async function getWorkoutDetails(userId: string, workoutId: string) {
         restSeconds: row.rest_seconds,
         notes: row.exercise_notes,
         sets: [],
+        previousPerformance,
+        recommendation: buildProgressionRecommendation(previousPerformance?.sets ?? [], {
+          repMin: row.prescribed_rep_min,
+          repMax: row.prescribed_rep_max,
+          targetRir: row.target_rir,
+          primaryMuscle: row.primary_muscle,
+        }),
       });
     }
 
