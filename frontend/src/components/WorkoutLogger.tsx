@@ -41,10 +41,16 @@ export function WorkoutLogger({
         const logged = exercise.sets.find(
           (set) => set.setType === 'working' && set.setNumber === setNumber
         );
+        const suggestedWeight = exercise.recommendation.weightKg;
+        const suggestedReps = exercise.recommendation.reps;
         nextDrafts[draftKey(exercise.id, setNumber)] = {
-          weightKg: logged?.weightKg == null ? '' : String(logged.weightKg),
-          reps: logged ? String(logged.reps) : '',
-          rir: logged?.rir == null ? '' : String(logged.rir),
+          weightKg: logged?.weightKg == null
+            ? suggestedWeight == null ? '' : String(suggestedWeight)
+            : String(logged.weightKg),
+          reps: logged ? String(logged.reps) : suggestedReps == null ? '' : String(suggestedReps),
+          rir: logged?.rir == null
+            ? exercise.targetRir == null ? '' : String(exercise.targetRir)
+            : String(logged.rir),
         };
       }
     }
@@ -136,8 +142,13 @@ export function WorkoutLogger({
               </p>
             </div>
 
+            <div className={`progression-cue ${exercise.recommendation.action}`}>
+              <strong>{exercise.previousPerformance ? 'Next target' : 'First session'}</strong>
+              <span>{exercise.recommendation.message}</span>
+            </div>
+
             <div className="set-table-heading" aria-hidden="true">
-              <span>Set</span>
+              <span>Set / last</span>
               <span>kg</span>
               <span>Reps</span>
               <span>RIR</span>
@@ -151,10 +162,20 @@ export function WorkoutLogger({
               const logged = exercise.sets.find(
                 (set) => set.setType === 'working' && set.setNumber === setNumber
               );
+              const previous = exercise.previousPerformance?.sets.find(
+                (set) => set.setNumber === setNumber
+              );
 
               return (
                 <div className="set-row" key={key}>
-                  <strong>{setNumber}</strong>
+                  <span className="set-index">
+                    <strong>{setNumber}</strong>
+                    <small>
+                      {previous
+                        ? `${previous.weightKg ?? '-'} x ${previous.reps}`
+                        : '-'}
+                    </small>
+                  </span>
                   <input
                     aria-label={`${exercise.name} set ${setNumber} weight in kilograms`}
                     type="number"
