@@ -724,6 +724,7 @@ function RoutineView({
           <span>{routine.daysPerWeek} days</span>
           <span>{routine.sessionDurationMin} min</span>
           <span>{routine.experienceLevel}</span>
+          <span>{routine.generationSource === 'ai' ? 'AI generated' : 'Rules generated'}</span>
         </div>
       </div>
 

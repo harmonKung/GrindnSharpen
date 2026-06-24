@@ -10,7 +10,7 @@ GrindnSharpen is a Full stack fitness app. Personalized bodybuilding routines ba
 - **Authentication:** JWT
 - **Infrastructure:** Docker
 
-OpenAI-powered routine generation or coaching chat and cloud deployment are planned future additions. The current routine generator is deterministic and does not require an API key.
+OpenAI-powered routine generation is optional and uses validated structured output with an automatic rules-based fallback. Coaching chat and cloud deployment are planned future additions.
 
 ## Quick Start
 
@@ -65,6 +65,7 @@ Open:
 - JWT authentication with access and refresh tokens
 - Editable training profiles with persistent kg/lb preferences
 - Equipment-aware routine generation
+- Optional AI routine generation with catalog validation and rules fallback
 - Focused workout logging with reps, weight, and RIR
 - Previous-performance targets and progressive-overload suggestions
 - Workout history with deletion controls
@@ -88,6 +89,8 @@ Backend variables are documented in `.env.example`:
 | `JWT_ACCESS_SECRET` | Access-token signing secret |
 | `JWT_REFRESH_SECRET` | Refresh-token signing secret |
 | `FRONTEND_URL` | Allowed CORS origin |
+| `OPENAI_API_KEY` | Optional OpenAI API key; rules fallback is used when blank |
+| `OPENAI_MODEL` | OpenAI model used for structured routine generation |
 
 The frontend uses `VITE_API_URL`, documented in `frontend/.env.example`.
 
