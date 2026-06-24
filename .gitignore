@@ -15,6 +15,18 @@ frontend/dist/
 # Vite/cache
 node_modules/.vite/
 frontend/node_modules/.vite/
+frontend/.vite/
+
+# Test output
+coverage/
+frontend/coverage/
+.vitest/
+test-results/
+playwright-report/
+
+# TypeScript/tool caches
+*.tsbuildinfo
+.eslintcache
 
 # Logs
 *.log

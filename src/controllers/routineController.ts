@@ -1,7 +1,8 @@
 import { Response } from 'express';
 import { getClient, query } from '../db/database';
 import { AuthRequest } from '../middleware/auth';
-import { ExerciseCandidate, generateRoutinePlan } from '../services/routineGenerator';
+import { ExerciseCandidate, RoutineProfile } from '../services/routineGenerator';
+import { generateRoutineWithFallback } from '../services/routineGenerationService';
 
 const goalNames: Record<string, string> = {
   build_muscle: 'Muscle Building',
@@ -45,13 +46,23 @@ export const generateRoutine = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    const generatorProfile = {
+    const generatorProfile: RoutineProfile = {
       experienceLevel: profile.experience_level,
       primaryGoal: profile.primary_goal,
       daysPerWeek: profile.days_per_week,
       sessionDurationMin: profile.session_duration_min,
     };
-    const days = generateRoutinePlan(generatorProfile, exerciseResult.rows as ExerciseCandidate[]);
+    const generationContext = {
+      equipment,
+      limitations: profile.limitations ?? null,
+      physiqueArchetype: profile.physique_archetype ?? null,
+    };
+    const generation = await generateRoutineWithFallback(
+      generatorProfile,
+      exerciseResult.rows as ExerciseCandidate[],
+      generationContext
+    );
+    const days = generation.days;
     const name = `${profile.days_per_week}-Day ${goalNames[profile.primary_goal] || 'Training'} Routine`;
 
     await client.query('BEGIN');
@@ -60,7 +71,7 @@ export const generateRoutine = async (req: AuthRequest, res: Response): Promise<
       `INSERT INTO routines (
         user_id, name, goal, experience_level, days_per_week,
         session_duration_min, generation_source, generation_context
-      ) VALUES ($1, $2, $3, $4, $5, $6, 'rules', $7)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING id, name, goal, experience_level, days_per_week,
                 session_duration_min, status, generation_source, created_at`,
       [
@@ -70,10 +81,11 @@ export const generateRoutine = async (req: AuthRequest, res: Response): Promise<
         profile.experience_level,
         profile.days_per_week,
         profile.session_duration_min,
+        generation.source,
         JSON.stringify({
-          equipment,
-          limitations: profile.limitations,
-          physiqueArchetype: profile.physique_archetype,
+          ...generationContext,
+          model: generation.model,
+          fallbackReason: generation.fallbackReason,
         }),
       ]
     );
