@@ -73,7 +73,7 @@ Open:
 - Body-weight check-ins, trends, and deletion controls
 - Weekly training metrics, strength trends, and personal records
 - Responsive desktop and mobile interface
-- Isolated backend authentication and workout API test suites
+- Isolated authentication, profile, workout, progress, and AI fallback test suites
 
 ## Environment Variables
 
@@ -107,6 +107,15 @@ npm run test:watch          # Run backend tests in watch mode
 npm --prefix frontend run dev
 npm --prefix frontend run build
 ```
+
+## Continuous Integration
+
+GitHub Actions runs `.github/workflows/ci.yml` on every push and pull request. The backend and frontend jobs run in parallel:
+
+- Backend: clean dependency install, automated tests, and TypeScript build
+- Frontend: clean dependency install and production Vite build
+
+The CI tests use mocked database and AI providers, so they do not require PostgreSQL, private environment files, or OpenAI credits.
 
 ## API Overview
 

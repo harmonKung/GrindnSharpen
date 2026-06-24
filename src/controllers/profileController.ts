@@ -3,6 +3,36 @@ import { validationResult } from 'express-validator';
 import { query } from '../db/database';
 import { AuthRequest } from '../middleware/auth';
 
+function serializeProfile(p: Record<string, unknown>) {
+  return {
+    id: p.id,
+    userId: p.user_id,
+    displayName: p.display_name,
+    avatarUrl: p.avatar_url,
+    dateOfBirth: p.date_of_birth,
+    gender: p.gender,
+    bodyWeightKg: p.body_weight_kg,
+    heightCm: p.height_cm,
+    bodyFatPct: p.body_fat_pct,
+    unitPreference: p.unit_preference,
+    experienceLevel: p.experience_level,
+    primaryGoal: p.primary_goal,
+    secondaryGoal: p.secondary_goal,
+    targetWeightKg: p.target_weight_kg,
+    targetBodyFatPct: p.target_body_fat_pct,
+    daysPerWeek: p.days_per_week,
+    sessionDurationMin: p.session_duration_min,
+    preferredDays: p.preferred_days,
+    equipment: p.equipment,
+    physiqueArchetype: p.physique_archetype,
+    limitations: p.limitations,
+    onboardingComplete: p.onboarding_complete,
+    onboardingStep: p.onboarding_step,
+    createdAt: p.created_at,
+    updatedAt: p.updated_at,
+  };
+}
+
 // ─── Get full profile ─────────────────────────────────────────────────────────
 
 export const getProfile = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -17,34 +47,7 @@ export const getProfile = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const p = result.rows[0];
-    res.json({
-      id:                p.id,
-      userId:            p.user_id,
-      displayName:       p.display_name,
-      avatarUrl:         p.avatar_url,
-      dateOfBirth:       p.date_of_birth,
-      gender:            p.gender,
-      bodyWeightKg:      p.body_weight_kg,
-      heightCm:          p.height_cm,
-      bodyFatPct:        p.body_fat_pct,
-      unitPreference:    p.unit_preference,
-      experienceLevel:   p.experience_level,
-      primaryGoal:       p.primary_goal,
-      secondaryGoal:     p.secondary_goal,
-      targetWeightKg:    p.target_weight_kg,
-      targetBodyFatPct:  p.target_body_fat_pct,
-      daysPerWeek:       p.days_per_week,
-      sessionDurationMin:p.session_duration_min,
-      preferredDays:     p.preferred_days,
-      equipment:         p.equipment,
-      physiqueArchetype: p.physique_archetype,
-      limitations:       p.limitations,
-      onboardingComplete:p.onboarding_complete,
-      onboardingStep:    p.onboarding_step,
-      createdAt:         p.created_at,
-      updatedAt:         p.updated_at,
-    });
+    res.json(serializeProfile(result.rows[0]));
   } catch (err) {
     console.error('Get profile error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -105,7 +108,12 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
       ]
     );
 
-    res.json({ message: 'Profile updated', profile: result.rows[0] });
+    if (!result.rows[0]) {
+      res.status(404).json({ error: 'Profile not found' });
+      return;
+    }
+
+    res.json({ message: 'Profile updated', profile: serializeProfile(result.rows[0]) });
   } catch (err) {
     console.error('Update profile error:', err);
     res.status(500).json({ error: 'Internal server error' });
