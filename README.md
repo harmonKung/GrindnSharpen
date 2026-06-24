@@ -63,6 +63,7 @@ Open:
 ## Current Features
 
 - JWT authentication with access and refresh tokens
+- Automatic access-token renewal with refresh-token rotation and logout revocation
 - Editable training profiles with persistent kg/lb preferences
 - Equipment-aware routine generation
 - Optional AI routine generation with catalog validation and rules fallback

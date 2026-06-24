@@ -6,6 +6,7 @@ import {
   Workout,
   WorkoutHistoryItem,
   completeWorkout,
+  configureAuthSession,
   deleteWorkout,
   generateRoutine,
   getMe,
@@ -16,6 +17,7 @@ import {
   listWorkoutHistory,
   logWorkoutSet,
   login,
+  logoutSession,
   register,
   startWorkout,
   updateProfile,
@@ -120,6 +122,18 @@ function App() {
   const [profileBeforeEdit, setProfileBeforeEdit] = useState<Partial<Profile> | null>(null);
 
   const isSignedIn = !!session?.accessToken;
+
+  useEffect(() => configureAuthSession({
+    getRefreshToken: () => readSession()?.refreshToken ?? null,
+    onRefreshed: (tokens) => {
+      localStorage.setItem(sessionKey, JSON.stringify(tokens));
+      setSession(tokens);
+    },
+    onExpired: () => {
+      clearSession();
+      setError('Your session expired. Please log in again.');
+    },
+  }), []);
 
   useEffect(() => {
     if (!message && !error) return;
@@ -344,7 +358,7 @@ function App() {
     }
   }
 
-  function logout() {
+  function clearSession() {
     localStorage.removeItem(sessionKey);
     setSession(null);
     setUser(null);
@@ -359,6 +373,14 @@ function App() {
     setProfileBeforeEdit(null);
     setMessage('');
     setError('');
+  }
+
+  function handleLogout() {
+    const refreshToken = readSession()?.refreshToken;
+    clearSession();
+    if (refreshToken) {
+      void logoutSession(refreshToken).catch(() => undefined);
+    }
   }
 
   return (
@@ -444,7 +466,7 @@ function App() {
               <p>{user?.email}</p>
             </div>
             <Feedback message={message} error={error} />
-            <button className="ghost-button" type="button" onClick={logout}>
+            <button className="ghost-button" type="button" onClick={handleLogout}>
               Log out
             </button>
           </div>

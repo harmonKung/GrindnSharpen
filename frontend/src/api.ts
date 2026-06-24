@@ -1,5 +1,57 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
+export type SessionTokens = {
+  accessToken: string;
+  refreshToken: string;
+};
+
+type AuthSessionConfig = {
+  getRefreshToken: () => string | null;
+  onRefreshed: (tokens: SessionTokens) => void;
+  onExpired: () => void;
+};
+
+let authSessionConfig: AuthSessionConfig | null = null;
+let refreshInFlight: Promise<SessionTokens> | null = null;
+
+export function configureAuthSession(config: AuthSessionConfig) {
+  authSessionConfig = config;
+  return () => {
+    if (authSessionConfig === config) authSessionConfig = null;
+  };
+}
+
+async function refreshAuthSession() {
+  if (refreshInFlight) return refreshInFlight;
+
+  const refreshToken = authSessionConfig?.getRefreshToken();
+  if (!refreshToken || !authSessionConfig) {
+    throw new Error('Session expired');
+  }
+
+  const config = authSessionConfig;
+  refreshInFlight = fetch(`${API_URL}/api/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error('Session expired');
+      const tokens = await response.json() as SessionTokens;
+      config.onRefreshed(tokens);
+      return tokens;
+    })
+    .catch((error) => {
+      config.onExpired();
+      throw error;
+    })
+    .finally(() => {
+      refreshInFlight = null;
+    });
+
+  return refreshInFlight;
+}
+
 export type AuthUser = {
   id: string;
   email: string;
@@ -218,10 +270,19 @@ async function request<T>(
     headers.set('Authorization', `Bearer ${accessToken}`);
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  let response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
   });
+
+  if (response.status === 401 && accessToken && authSessionConfig) {
+    const tokens = await refreshAuthSession();
+    headers.set('Authorization', `Bearer ${tokens.accessToken}`);
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+    });
+  }
 
   const body = await response.json().catch(() => null) as ApiErrorBody | T | null;
 
@@ -248,6 +309,13 @@ export function login(email: string, password: string) {
   return request<AuthResponse>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
+  });
+}
+
+export function logoutSession(refreshToken: string) {
+  return request<{ message: string }>('/api/auth/logout', {
+    method: 'POST',
+    body: JSON.stringify({ refreshToken }),
   });
 }
 
