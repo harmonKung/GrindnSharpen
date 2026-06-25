@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import axe from 'axe-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMocks = vi.hoisted(() => ({
@@ -59,6 +60,20 @@ describe('ProgressDashboard', () => {
     });
   });
 
+  it('has no automated accessibility violations', async () => {
+    const { container } = render(
+      <ProgressDashboard
+        accessToken="token"
+        currentWeight={82}
+        unitPreference="kg"
+        onWeightLogged={vi.fn()}
+      />
+    );
+
+    await screen.findByText('Personal records');
+    expect((await axe.run(container, { rules: { 'color-contrast': { enabled: false } } })).violations).toEqual([]);
+  });
+
   it('renders stored kilogram data in the selected pound unit', async () => {
     render(
       <ProgressDashboard
@@ -111,9 +126,9 @@ describe('ProgressDashboard', () => {
       />
     );
 
-    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+    await user.click(await screen.findByRole('button', { name: /Delete weight entry/ }));
     expect(apiMocks.deleteBodyWeight).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Confirm' }));
+    await user.click(screen.getByRole('button', { name: /Confirm deletion of weight entry/ }));
 
     await waitFor(() => expect(apiMocks.deleteBodyWeight).toHaveBeenCalledWith('token', 'weight-1'));
     expect(onWeightLogged).toHaveBeenCalledWith(81);
