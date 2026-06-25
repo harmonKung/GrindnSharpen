@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from 'react';
 import {
   AuthUser,
   Profile,
@@ -28,6 +28,8 @@ import { UnitPreference, formatWeight, fromKilograms, toKilograms } from './unit
 
 type AuthMode = 'login' | 'register';
 type MainView = 'profile' | 'routine' | 'progress';
+
+const mainViews: MainView[] = ['profile', 'routine', 'progress'];
 
 type Session = {
   accessToken: string;
@@ -383,8 +385,25 @@ function App() {
     }
   }
 
+  function handleMainTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, currentView: MainView) {
+    const currentIndex = mainViews.indexOf(currentView);
+    let nextIndex = currentIndex;
+
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % mainViews.length;
+    if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + mainViews.length) % mainViews.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = mainViews.length - 1;
+    if (nextIndex === currentIndex) return;
+
+    event.preventDefault();
+    const nextView = mainViews[nextIndex];
+    setMainView(nextView);
+    window.requestAnimationFrame(() => document.getElementById(`main-tab-${nextView}`)?.focus());
+  }
+
   return (
     <main className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <section className="brand-panel">
         <div>
           <h1 className="brand-title">GrindnSharpen</h1>
@@ -407,7 +426,7 @@ function App() {
       </section>
 
       {!isSignedIn ? (
-        <section className="work-panel auth-panel">
+        <section className="work-panel auth-panel" id="main-content">
           <div className="panel-heading">
             <h2>{mode === 'login' ? 'Log in' : 'Create account'}</h2>
             <button
@@ -424,6 +443,7 @@ function App() {
               Email
               <input
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
@@ -434,6 +454,7 @@ function App() {
               Password
               <input
                 type="password"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 minLength={8}
@@ -449,7 +470,7 @@ function App() {
           <Feedback message={message} error={error} />
         </section>
       ) : activeWorkout && workoutScreenOpen ? (
-        <section className="work-panel workout-page">
+        <section className="work-panel workout-page" id="main-content">
           <WorkoutLogger
             workout={activeWorkout}
             unitPreference={profile.unitPreference ?? 'kg'}
@@ -459,7 +480,7 @@ function App() {
           />
         </section>
       ) : (
-        <section className="work-panel">
+        <section className="work-panel" id="main-content">
           <div className="panel-heading">
             <div>
               <h2>Training hub</h2>
@@ -472,19 +493,26 @@ function App() {
           </div>
 
           <nav className="workspace-tabs" role="tablist" aria-label="Training sections">
-            <button type="button" role="tab" aria-selected={mainView === 'profile'} className={mainView === 'profile' ? 'active' : ''} onClick={() => setMainView('profile')}>
-              Training profile
-            </button>
-            <button type="button" role="tab" aria-selected={mainView === 'routine'} className={mainView === 'routine' ? 'active' : ''} onClick={() => setMainView('routine')}>
-              Routine
-            </button>
-            <button type="button" role="tab" aria-selected={mainView === 'progress'} className={mainView === 'progress' ? 'active' : ''} onClick={() => setMainView('progress')}>
-              Training trend
-            </button>
+            {mainViews.map((view) => (
+              <button
+                key={view}
+                id={`main-tab-${view}`}
+                type="button"
+                role="tab"
+                aria-selected={mainView === view}
+                aria-controls="main-panel"
+                tabIndex={mainView === view ? 0 : -1}
+                className={mainView === view ? 'active' : ''}
+                onClick={() => setMainView(view)}
+                onKeyDown={(event) => handleMainTabKeyDown(event, view)}
+              >
+                {view === 'profile' ? 'Training profile' : view === 'routine' ? 'Routine' : 'Training trend'}
+              </button>
+            ))}
           </nav>
 
           {mainView === 'profile' && !editingProfile && (
-            <section className="profile-summary tab-page" role="tabpanel">
+            <section className="profile-summary tab-page" id="main-panel" role="tabpanel" aria-labelledby="main-tab-profile" tabIndex={0}>
               <div className="profile-summary-heading">
                 <div><p className="section-label">Your details</p><h2>{profile.displayName || 'Training profile'}</h2></div>
                 <button className="secondary-button" type="button" onClick={() => {
@@ -506,7 +534,7 @@ function App() {
           )}
 
           {mainView === 'profile' && editingProfile && (
-          <form onSubmit={handleProfileSubmit} className="profile-grid tab-page" role="tabpanel">
+          <form onSubmit={handleProfileSubmit} className="profile-grid tab-page" id="main-panel" role="tabpanel" aria-labelledby="main-tab-profile" tabIndex={0}>
             <label>
               Display name
               <input
@@ -638,7 +666,7 @@ function App() {
           )}
 
           {mainView === 'routine' && (
-            <section className="routine-workspace tab-page" role="tabpanel">
+            <section className="routine-workspace tab-page" id="main-panel" role="tabpanel" aria-labelledby="main-tab-routine" tabIndex={0}>
               <div className="routine-controls">
                 <div>
                   <p className="section-label">Routine setup</p>
@@ -682,7 +710,7 @@ function App() {
           )}
 
           {mainView === 'progress' && (
-            <div className="tab-page" role="tabpanel">
+            <div className="tab-page" id="main-panel" role="tabpanel" aria-labelledby="main-tab-progress" tabIndex={0}>
               <ProgressDashboard
                 accessToken={session.accessToken}
                 currentWeight={profile.bodyWeightKg}
@@ -733,6 +761,21 @@ function RoutineView({
   hasActiveWorkout: boolean;
 }) {
   const activeDay = routine.days[activeDayIndex] ?? routine.days[0];
+
+  function handleDayTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, currentIndex: number) {
+    let nextIndex = currentIndex;
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % routine.days.length;
+    if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + routine.days.length) % routine.days.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = routine.days.length - 1;
+    if (nextIndex === currentIndex) return;
+
+    event.preventDefault();
+    onDayChange(nextIndex);
+    const nextDay = routine.days[nextIndex];
+    window.requestAnimationFrame(() => document.getElementById(`routine-day-tab-${nextDay.id}`)?.focus());
+  }
+
   if (!activeDay) return null;
 
   return (
@@ -754,11 +797,15 @@ function RoutineView({
         {routine.days.map((day, index) => (
           <button
             key={day.id}
+            id={`routine-day-tab-${day.id}`}
             type="button"
             role="tab"
             aria-selected={index === activeDayIndex}
+            aria-controls="routine-day-panel"
+            tabIndex={index === activeDayIndex ? 0 : -1}
             className={index === activeDayIndex ? 'day-tab active' : 'day-tab'}
             onClick={() => onDayChange(index)}
+            onKeyDown={(event) => handleDayTabKeyDown(event, index)}
           >
             <span>Day {day.dayNumber}</span>
             <strong>{day.name}</strong>
@@ -766,6 +813,12 @@ function RoutineView({
         ))}
       </div>
 
+      <div
+        id="routine-day-panel"
+        role="tabpanel"
+        aria-labelledby={`routine-day-tab-${activeDay.id}`}
+        tabIndex={0}
+      >
       <div className="day-summary">
         <div>
           <p className="section-label">Day {activeDay.dayNumber}</p>
@@ -802,6 +855,7 @@ function RoutineView({
             </div>
           </div>
         ))}
+      </div>
       </div>
     </section>
   );

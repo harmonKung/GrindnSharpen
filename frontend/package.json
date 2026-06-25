@@ -22,6 +22,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
+    "axe-core": "^4.10.3",
     "jsdom": "^26.1.0",
     "typescript": "^5.7.2",
     "vitest": "^4.1.9"

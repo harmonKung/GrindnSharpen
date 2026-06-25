@@ -272,13 +272,13 @@ export function WorkoutHistory({
             <div className="history-delete-actions">
               {confirmingId === workout.id ? (
                 <>
-                  <button type="button" className="confirm-delete" disabled={deletingId === workout.id} onClick={() => removeWorkout(workout.id)}>
+                  <button type="button" className="confirm-delete" aria-label={`Confirm deletion of ${workout.name} workout`} disabled={deletingId === workout.id} onClick={() => removeWorkout(workout.id)}>
                     {deletingId === workout.id ? 'Deleting...' : 'Confirm'}
                   </button>
-                  <button type="button" disabled={deletingId === workout.id} onClick={() => setConfirmingId(null)}>Cancel</button>
+                  <button type="button" aria-label={`Cancel deletion of ${workout.name} workout`} disabled={deletingId === workout.id} onClick={() => setConfirmingId(null)}>Cancel</button>
                 </>
               ) : (
-                <button type="button" className="delete-trigger" onClick={() => setConfirmingId(workout.id)}>Delete</button>
+                <button type="button" className="delete-trigger" aria-label={`Delete ${workout.name} workout`} onClick={() => setConfirmingId(workout.id)}>Delete</button>
               )}
             </div>
           </div>

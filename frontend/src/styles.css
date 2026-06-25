@@ -28,6 +28,30 @@ button {
   cursor: pointer;
 }
 
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 2000;
+  padding: 10px 14px;
+  color: #ffffff;
+  background: #24170f;
+  font-weight: 800;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+button:focus-visible,
+a:focus-visible,
+[role="tab"]:focus-visible,
+[role="tabpanel"]:focus-visible {
+  outline: 3px solid #24758b;
+  outline-offset: 3px;
+}
+
 .app-shell {
   min-height: 100vh;
   display: grid;
@@ -294,11 +318,11 @@ textarea:focus {
 
 .primary-button {
   color: #ffffff;
-  background: #d95d16;
+  background: #a94310;
 }
 
 .primary-button:hover {
-  background: #a94310;
+  background: #853109;
 }
 
 .secondary-button {
@@ -453,9 +477,9 @@ textarea:focus {
 }
 
 .day-tab.active {
-  border-color: #d95d16;
+  border-color: #a94310;
   color: #ffffff;
-  background: #d95d16;
+  background: #a94310;
 }
 
 .day-summary {
@@ -642,7 +666,7 @@ textarea:focus {
   place-items: center;
   border-radius: 50%;
   color: #ffffff;
-  background: #d95d16;
+  background: #a94310;
   font-weight: 800;
 }
 
@@ -980,7 +1004,18 @@ textarea:focus {
   width: min(22px, 55%);
   min-height: 8px;
   border-radius: 4px 4px 0 0;
-  background: #d95d16;
+  background: #a94310;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .progress-empty {

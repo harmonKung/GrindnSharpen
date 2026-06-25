@@ -147,13 +147,13 @@ export function ProgressDashboard({ accessToken, currentWeight, unitPreference, 
                   <div className="weight-delete-actions">
                     {confirmingWeightId === entry.id ? (
                       <>
-                        <button type="button" className="confirm-delete" disabled={deletingId === entry.id} onClick={() => removeWeight(entry)}>
+                        <button type="button" className="confirm-delete" aria-label={`Confirm deletion of weight entry from ${formatChartDate(entry.recordedOn)}`} disabled={deletingId === entry.id} onClick={() => removeWeight(entry)}>
                           {deletingId === entry.id ? 'Deleting...' : 'Confirm'}
                         </button>
-                        <button type="button" disabled={deletingId === entry.id} onClick={() => setConfirmingWeightId(null)}>Cancel</button>
+                        <button type="button" aria-label={`Cancel deletion of weight entry from ${formatChartDate(entry.recordedOn)}`} disabled={deletingId === entry.id} onClick={() => setConfirmingWeightId(null)}>Cancel</button>
                       </>
                     ) : (
-                      <button type="button" className="delete-trigger" onClick={() => setConfirmingWeightId(entry.id)}>Delete</button>
+                      <button type="button" className="delete-trigger" aria-label={`Delete weight entry from ${formatChartDate(entry.recordedOn)}`} onClick={() => setConfirmingWeightId(entry.id)}>Delete</button>
                     )}
                   </div>
                 </div>

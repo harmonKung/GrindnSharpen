@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import axe from 'axe-core';
 import { describe, expect, it, vi } from 'vitest';
 import { Workout, WorkoutHistoryItem } from '../api';
 import { WorkoutHistory, WorkoutLogger } from './WorkoutLogger';
@@ -43,6 +44,20 @@ const workout: Workout = {
 };
 
 describe('WorkoutLogger', () => {
+  it('has no automated accessibility violations', async () => {
+    const { container } = render(
+      <WorkoutLogger
+        workout={workout}
+        unitPreference="kg"
+        onLogSet={vi.fn()}
+        onComplete={vi.fn()}
+        onExit={vi.fn()}
+      />
+    );
+
+    expect((await axe.run(container, { rules: { 'color-contrast': { enabled: false } } })).violations).toEqual([]);
+  });
+
   it('converts suggested and previous weights to the selected unit', async () => {
     render(
       <WorkoutLogger
@@ -120,9 +135,9 @@ describe('WorkoutHistory', () => {
 
     expect(screen.queryByText('Untouched')).not.toBeInTheDocument();
     expect(screen.getByText('4,000 kg')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await user.click(screen.getByRole('button', { name: 'Delete Push Day workout' }));
     expect(onDelete).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Confirm' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm deletion of Push Day workout' }));
     expect(onDelete).toHaveBeenCalledWith('logged-workout');
   });
 });
