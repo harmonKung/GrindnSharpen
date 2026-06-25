@@ -119,6 +119,60 @@ GitHub Actions runs `.github/workflows/ci.yml` on every push and pull request. T
 
 The CI tests use mocked database and AI providers, so they do not require PostgreSQL, private environment files, or OpenAI credits.
 
+## Deployment: Render + Neon
+
+Recommended low-cost portfolio setup:
+
+- Render Static Site for the React frontend
+- Render Web Service for the Express API
+- Neon free PostgreSQL for the production database
+
+The included `render.yaml` can be used as a Render Blueprint, or you can create both services manually in the Render dashboard.
+
+### Backend Web Service
+
+- Root directory: repository root
+- Build command: `npm ci && npm run build`
+- Start command: `npm start`
+- Health check path: `/health`
+
+Set these backend environment variables in Render:
+
+```bash
+NODE_ENV=production
+DATABASE_URL=<your Neon pooled connection string>
+JWT_ACCESS_SECRET=<long random secret>
+JWT_REFRESH_SECRET=<different long random secret>
+FRONTEND_URL=https://your-frontend.onrender.com
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5-mini
+```
+
+Leave `OPENAI_API_KEY` blank if you do not want to spend API credits. The app will use the rules-based routine generator.
+
+### Frontend Static Site
+
+- Root directory: repository root
+- Build command: `cd frontend && npm ci && npm run build`
+- Publish directory: `frontend/dist`
+
+Set this frontend environment variable in Render:
+
+```bash
+VITE_API_URL=https://your-api.onrender.com
+```
+
+### Production Database Setup
+
+After creating the Neon database and adding `DATABASE_URL` to Render, run the backend migrations and seed command from Render Shell or a trusted local terminal with the production `DATABASE_URL` set:
+
+```bash
+npm run db:migrate
+npm run db:seed
+```
+
+Free Render web services may sleep after inactivity. The first request after a quiet period can take a few seconds to wake up.
+
 ## API Overview
 
 All protected endpoints require `Authorization: Bearer <access-token>`.
