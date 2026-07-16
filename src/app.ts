@@ -23,6 +23,16 @@ app.use(cors({
 }));
 app.use(express.json());
 
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+
+  res.on('finish', () => {
+    console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - startedAt}ms origin=${req.headers.origin ?? 'none'}`);
+  });
+
+  next();
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/routines', routineRoutes);
