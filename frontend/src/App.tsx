@@ -104,8 +104,9 @@ function readSession(): Session | null {
 
 function App() {
   const [mode, setMode] = useState<AuthMode>('login');
-  const [email, setEmail] = useState('test@example.com');
-  const [password, setPassword] = useState('Password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [session, setSession] = useState<Session | null>(() => readSession());
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<Partial<Profile>>(defaultProfile);
@@ -452,14 +453,24 @@ function App() {
 
             <label>
               Password
-              <input
-                type="password"
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                minLength={8}
-                required
-              />
+              <span className="password-field">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  minLength={8}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword((current) => !current)}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </span>
             </label>
 
             <button className="primary-button" disabled={loading}>
