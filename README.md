@@ -12,6 +12,13 @@ GrindnSharpen is a Full stack fitness app. Personalized bodybuilding routines ba
 
 OpenAI-powered routine generation is optional and uses validated structured output with an automatic rules-based fallback. Coaching chat and cloud deployment are planned future additions.
 
+## Live Demo
+
+- App: https://grindnsharpen-web.onrender.com
+- API health check: https://grindnsharpen-api.onrender.com/health
+
+The app is hosted on Render's free tier, so the backend may take a few seconds to wake up on the first request after inactivity.
+
 ## Quick Start
 
 ### Prerequisites
