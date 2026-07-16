@@ -106,6 +106,7 @@ export function WorkoutLogger({
           <p className="section-label">Workout in progress</p>
           <h2>{workout.name}</h2>
           <p>{loggedCount} of {prescribedCount} working sets logged</p>
+          <p className="training-legend"><strong>RIR</strong> = reps in reserve, or how many reps you could still do after a set.</p>
         </div>
         <div className="workout-actions">
           <button
