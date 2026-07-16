@@ -285,6 +285,30 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(229, 110, 31, 0.18);
 }
 
+.password-field {
+  position: relative;
+  display: block;
+}
+
+.password-field input {
+  padding-right: 72px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 10px;
+  color: #a94310;
+  background: #f7e6d7;
+  font-size: 0.78rem;
+  font-weight: 800;
+  transform: translateY(-50%);
+}
+
 .wide {
   grid-column: 1 / -1;
 }
