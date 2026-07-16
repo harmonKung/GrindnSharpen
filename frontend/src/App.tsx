@@ -466,9 +466,10 @@ function App() {
                   type="button"
                   className="password-toggle"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
                   onClick={() => setShowPassword((current) => !current)}
                 >
-                  {showPassword ? 'Hide' : 'Show'}
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </span>
             </label>
@@ -754,6 +755,26 @@ function Feedback({ message, error }: { message: string; error: string }) {
   );
 }
 
+function EyeIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+      <path d="M3 3l18 18" />
+      <path d="M10.6 6.2A9.7 9.7 0 0 1 12 6c6 0 9.5 6 9.5 6a17.5 17.5 0 0 1-3 3.6" />
+      <path d="M14.1 14.1A3 3 0 0 1 9.9 9.9" />
+      <path d="M6.4 6.9C3.9 8.6 2.5 12 2.5 12s3.5 6 9.5 6c1.4 0 2.7-.3 3.8-.8" />
+    </svg>
+  );
+}
+
 function RoutineView({
   routine,
   activeDayIndex,
@@ -795,6 +816,7 @@ function RoutineView({
         <div>
           <p className="section-label">Current routine</p>
           <h2>{routine.name}</h2>
+          <p className="training-legend"><strong>RIR</strong> = reps in reserve, or how many reps you could still do after a set.</p>
         </div>
         <div className="routine-meta">
           <span>{routine.daysPerWeek} days</span>

@@ -291,22 +291,33 @@ textarea:focus {
 }
 
 .password-field input {
-  padding-right: 72px;
+  padding-right: 52px;
 }
 
 .password-toggle {
   position: absolute;
   top: 50%;
   right: 8px;
+  display: grid;
+  width: 34px;
   min-height: 32px;
+  place-items: center;
   border: 0;
   border-radius: 6px;
-  padding: 0 10px;
+  padding: 0;
   color: #a94310;
   background: #f7e6d7;
-  font-size: 0.78rem;
-  font-weight: 800;
   transform: translateY(-50%);
+}
+
+.password-toggle svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .wide {
@@ -463,6 +474,18 @@ textarea:focus {
   font-size: 0.8rem;
   font-weight: 750;
   text-transform: capitalize;
+}
+
+.training-legend {
+  max-width: 460px;
+  margin: 6px 0 0;
+  color: #7b6655;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.training-legend strong {
+  color: #a94310;
 }
 
 .day-tabs {
