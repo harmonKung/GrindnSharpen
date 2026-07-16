@@ -286,6 +286,10 @@ async function request<T>(
 
   const body = await response.json().catch(() => null) as ApiErrorBody | T | null;
 
+  if (body === null) {
+    throw new Error('API did not return JSON. Check that VITE_API_URL points to the deployed backend API.');
+  }
+
   if (!response.ok) {
     const message =
       (body as ApiErrorBody | null)?.error ||
