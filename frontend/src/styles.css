@@ -65,7 +65,7 @@ a:focus-visible,
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: clamp(32px, 4vw, 56px) clamp(64px, 8vw, 112px) clamp(32px, 4vw, 56px) clamp(32px, 4vw, 56px);
+  padding: clamp(32px, 4vw, 56px) clamp(24px, 5vw, 80px) clamp(32px, 4vw, 56px) clamp(32px, 4vw, 56px);
   color: #fff8ef;
   background:
     linear-gradient(rgba(50, 24, 8, 0.74), rgba(50, 24, 8, 0.74)),
@@ -85,7 +85,7 @@ p {
   max-width: 100%;
   margin-bottom: 18px;
   font-family: var(--display-font);
-  font-size: 5.25rem;
+  font-size: clamp(1.65rem, 3.2vw, 4rem);
   font-weight: 900;
   line-height: 0.88;
   letter-spacing: 0.08em;
@@ -351,10 +351,6 @@ textarea:focus {
 }
 
 @media (min-width: 901px) and (max-width: 1200px) {
-  .brand-title {
-    font-size: 3.5rem;
-  }
-
   .hero-line {
     font-size: 1.55rem;
   }
@@ -1182,7 +1178,7 @@ textarea:focus {
   }
 
   .brand-title {
-    font-size: 4.5rem;
+    font-size: clamp(2rem, 7.5vw, 4.5rem);
   }
 
   .work-panel {
@@ -1202,7 +1198,7 @@ textarea:focus {
   }
 
   .brand-title {
-    font-size: 3rem;
+    font-size: clamp(1.5rem, 7.2vw, 3rem);
     white-space: nowrap;
   }
 
@@ -1350,10 +1346,6 @@ textarea:focus {
 }
 
 @media (max-width: 380px) {
-  .brand-title {
-    font-size: 2.55rem;
-  }
-
   .hero-line {
     font-size: 1.3rem;
   }
