@@ -34,6 +34,7 @@ export function WorkoutLogger({
   const [drafts, setDrafts] = useState<Record<string, SetDraft>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     const nextDrafts: Record<string, SetDraft> = {};
@@ -60,6 +61,17 @@ export function WorkoutLogger({
 
     setDrafts(nextDrafts);
   }, [workout, unitPreference]);
+
+  useEffect(() => {
+    if (!showHelp) return;
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setShowHelp(false);
+    }
+
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [showHelp]);
 
   function updateDraft(key: string, field: keyof SetDraft, value: string) {
     setDrafts((current) => ({
@@ -112,6 +124,13 @@ export function WorkoutLogger({
           <button
             type="button"
             className="ghost-button"
+            onClick={() => setShowHelp(true)}
+          >
+            Help
+          </button>
+          <button
+            type="button"
+            className="ghost-button"
             disabled={finishing}
             onClick={onExit}
           >
@@ -127,6 +146,40 @@ export function WorkoutLogger({
           </button>
         </div>
       </div>
+
+      {showHelp && (
+        <div
+          className="workout-help-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setShowHelp(false);
+          }}
+        >
+          <section
+            className="workout-help-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workout-help-title"
+          >
+            <div className="workout-help-heading">
+              <h2 id="workout-help-title">How to record your sets</h2>
+              <button
+                type="button"
+                className="ghost-button"
+                autoFocus
+                onClick={() => setShowHelp(false)}
+              >
+                Close
+              </button>
+            </div>
+            <ol>
+              <li>Each row is one working set. The smaller number under the set number shows your last performance for reference.</li>
+              <li>Enter the weight you lifted in your selected unit and the reps you completed. Reps are required; weight can be left blank if your not adding any weights.</li>
+              <li>Enter your RIR (reps in reserve): how many more reps you could have done. RIR is optional.</li>
+              <li>Press <strong>Log</strong> to save that set. Repeat for each set; you can edit the values and log again if needed.</li>
+            </ol>
+          </section>
+        </div>
+      )}
 
       <div className="workout-exercises">
         {workout.exercises.map((exercise) => (

@@ -169,14 +169,14 @@ h2 {
 }
 
 .workspace-tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
   gap: 4px;
   border-bottom: 1px solid #decabb;
   overflow-x: auto;
 }
 
 .workspace-tabs button {
-  flex: 0 0 auto;
   min-height: 44px;
   border: 0;
   border-bottom: 3px solid transparent;
@@ -184,6 +184,8 @@ h2 {
   color: #7b6655;
   background: transparent;
   font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .workspace-tabs button:hover {
@@ -681,6 +683,45 @@ textarea:focus {
 .workout-actions {
   display: flex;
   gap: 10px;
+}
+
+.workout-help-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(31, 22, 16, 0.58);
+}
+
+.workout-help-dialog {
+  width: min(520px, 100%);
+  padding: 24px;
+  border: 1px solid #ead8c7;
+  border-radius: 14px;
+  color: #38291f;
+  background: #fffaf5;
+  box-shadow: 0 18px 48px rgba(31, 22, 16, 0.28);
+}
+
+.workout-help-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.workout-help-heading h2 {
+  margin-bottom: 12px;
+}
+
+.workout-help-dialog ol {
+  display: grid;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding-left: 22px;
+  line-height: 1.5;
 }
 
 .workout-exercises {

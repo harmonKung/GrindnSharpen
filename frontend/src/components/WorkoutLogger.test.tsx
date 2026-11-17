@@ -106,6 +106,31 @@ describe('WorkoutLogger', () => {
     await user.click(screen.getByRole('button', { name: 'Finish workout' }));
     expect(onComplete).toHaveBeenCalledOnce();
   });
+
+  it('opens and closes set-recording help', async () => {
+    const user = userEvent.setup();
+    render(
+      <WorkoutLogger
+        workout={workout}
+        unitPreference="kg"
+        onLogSet={vi.fn()}
+        onComplete={vi.fn()}
+        onExit={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Help' }));
+    expect(screen.getByRole('dialog', { name: 'How to record your sets' })).toBeInTheDocument();
+    expect(screen.getByText(/Reps are required; weight can be left blank/)).toBeInTheDocument();
+    expect(screen.getByText(/RIR \(reps in reserve\)/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Help' }));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });
 
 describe('WorkoutHistory', () => {
