@@ -59,6 +59,39 @@ a:focus-visible,
   grid-template-columns: minmax(360px, 0.9fr) minmax(440px, 1.1fr);
 }
 
+.app-shell-signed-in {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-shell-signed-in .brand-panel {
+  display: none;
+}
+
+.app-shell-signed-in .work-panel {
+  width: 100%;
+  max-width: 1440px;
+  min-height: 100vh;
+  margin-inline: auto;
+  padding: clamp(24px, 3vw, 42px);
+}
+
+.app-shell-signed-in .panel-heading {
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #decabb;
+}
+
+.app-shell-signed-in .panel-heading h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.app-shell-signed-in .panel-heading p {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+}
+
 .brand-panel {
   min-height: 100vh;
   min-width: 0;
@@ -660,6 +693,92 @@ textarea:focus {
   border-top: 0;
 }
 
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+  margin-top: 24px;
+}
+
+.dashboard-card {
+  min-width: 0;
+  min-height: 340px;
+  border: 1px solid #decabb;
+  border-radius: 14px;
+  padding: 18px;
+  background: #fffdfa;
+  overflow: hidden;
+}
+
+.dashboard-card-title {
+  margin: 0 0 12px;
+  font-size: 1.25rem;
+}
+
+.profile-dashboard-card,
+.routine-dashboard-card,
+.progress-dashboard-card,
+.dashboard-profile-card {
+  width: 100%;
+}
+
+.routine-dashboard-card,
+.progress-dashboard-card {
+  grid-column: 1 / -1;
+  min-height: 0;
+}
+
+.profile-dashboard-card .profile-info-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.dashboard-profile-card {
+  grid-column: 1 / -1;
+  align-content: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-height: 0;
+}
+
+.progress-dashboard-card .progress-dashboard {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.progress-dashboard-card .progress-metrics {
+  margin: 14px 0;
+}
+
+.progress-dashboard-card .progress-grid {
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+}
+
+.progress-dashboard-card .progress-panel {
+  max-height: 360px;
+  overflow: hidden;
+}
+
+.progress-dashboard-card .trend-chart {
+  height: 120px;
+  margin-top: 10px;
+  padding-top: 8px;
+}
+
+.progress-dashboard-card .weight-log-list {
+  max-height: 100px;
+}
+
+.progress-dashboard-card .personal-records {
+  margin-top: 14px;
+}
+
+.progress-dashboard-card .workout-history {
+  margin-top: 20px;
+  padding-top: 18px;
+}
+
 .workout-page .workout-logger {
   margin-bottom: 0;
   padding-top: 0;
@@ -1172,6 +1291,10 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .app-shell-signed-in .work-panel {
+    min-height: 100vh;
+  }
+
   .brand-panel {
     min-height: 520px;
     padding: 32px;
@@ -1187,6 +1310,20 @@ textarea:focus {
   }
 
   .progress-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .routine-dashboard-card,
+  .progress-dashboard-card,
+  .dashboard-profile-card {
+    grid-column: auto;
+  }
+
+  .progress-dashboard-card .progress-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -1267,6 +1404,19 @@ textarea:focus {
 
   .workspace-tabs {
     margin-inline: -4px;
+  }
+
+  .dashboard-grid {
+    gap: 10px;
+  }
+
+  .dashboard-card {
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .dashboard-profile-card {
+    grid-template-columns: 1fr;
   }
 
   .workspace-tabs button {

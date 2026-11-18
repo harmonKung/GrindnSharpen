@@ -403,7 +403,7 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell${isSignedIn ? ' app-shell-signed-in' : ''}`}>
       <a className="skip-link" href="#main-content">Skip to main content</a>
       <section className="brand-panel">
         <div>
@@ -495,7 +495,7 @@ function App() {
         <section className="work-panel" id="main-content">
           <div className="panel-heading">
             <div>
-              <h2>Training hub</h2>
+              <h2>GrindnSharpen</h2>
               <p>{user?.email}</p>
             </div>
             <Feedback message={message} error={error} />
@@ -504,29 +504,11 @@ function App() {
             </button>
           </div>
 
-          <nav className="workspace-tabs" role="tablist" aria-label="Training sections">
-            {mainViews.map((view) => (
-              <button
-                key={view}
-                id={`main-tab-${view}`}
-                type="button"
-                role="tab"
-                aria-selected={mainView === view}
-                aria-controls="main-panel"
-                tabIndex={mainView === view ? 0 : -1}
-                className={mainView === view ? 'active' : ''}
-                onClick={() => setMainView(view)}
-                onKeyDown={(event) => handleMainTabKeyDown(event, view)}
-              >
-                {view === 'profile' ? 'Training profile' : view === 'routine' ? 'Routine' : 'Training trend'}
-              </button>
-            ))}
-          </nav>
-
-          {mainView === 'profile' && !editingProfile && (
-            <section className="profile-summary tab-page" id="main-panel" role="tabpanel" aria-labelledby="main-tab-profile" tabIndex={0}>
+          <div className="dashboard-grid">
+          {!editingProfile && (
+            <section className="dashboard-card profile-dashboard-card" aria-labelledby="dashboard-profile-title">
               <div className="profile-summary-heading">
-                <div><p className="section-label">Your details</p><h2>{profile.displayName || 'Training profile'}</h2></div>
+                <div><p className="section-label">Your details</p><h2 id="dashboard-profile-title">{profile.displayName || 'Training profile'}</h2></div>
                 <button className="secondary-button" type="button" onClick={() => {
                   setProfileBeforeEdit({ ...profile, equipment: [...(profile.equipment ?? [])] });
                   setEditingProfile(true);
@@ -545,8 +527,8 @@ function App() {
             </section>
           )}
 
-          {mainView === 'profile' && editingProfile && (
-          <form onSubmit={handleProfileSubmit} className="profile-grid tab-page" id="main-panel" role="tabpanel" aria-labelledby="main-tab-profile" tabIndex={0}>
+          {editingProfile && (
+          <form onSubmit={handleProfileSubmit} className="profile-grid dashboard-card dashboard-profile-card" aria-labelledby="dashboard-profile-title">
             <label>
               Display name
               <input
@@ -677,12 +659,11 @@ function App() {
           </form>
           )}
 
-          {mainView === 'routine' && (
-            <section className="routine-workspace tab-page" id="main-panel" role="tabpanel" aria-labelledby="main-tab-routine" tabIndex={0}>
+          <section className="routine-workspace dashboard-card routine-dashboard-card" aria-labelledby="dashboard-routine-title">
               <div className="routine-controls">
                 <div>
                   <p className="section-label">Routine setup</p>
-                  <h2>{routine ? 'Current routine' : 'Build your routine'}</h2>
+                  <h2 id="dashboard-routine-title">{routine ? 'Current routine' : 'Build your routine'}</h2>
                 </div>
                 <div className="routine-generator-controls">
                   <label>
@@ -719,10 +700,9 @@ function App() {
                 <p className="routine-empty">Choose your equipment, then generate your first routine.</p>
               )}
             </section>
-          )}
 
-          {mainView === 'progress' && (
-            <div className="tab-page" id="main-panel" role="tabpanel" aria-labelledby="main-tab-progress" tabIndex={0}>
+            <section className="dashboard-card progress-dashboard-card" aria-labelledby="dashboard-progress-title">
+              <h2 className="dashboard-card-title" id="dashboard-progress-title">Training trend</h2>
               <ProgressDashboard
                 accessToken={session.accessToken}
                 currentWeight={profile.bodyWeightKg}
@@ -733,8 +713,8 @@ function App() {
                 }))}
               />
               <WorkoutHistory workouts={workoutHistory} onDelete={handleDeleteWorkout} unitPreference={profile.unitPreference ?? 'kg'} />
-            </div>
-          )}
+            </section>
+          </div>
         </section>
       )}
     </main>
