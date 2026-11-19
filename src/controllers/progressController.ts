@@ -11,7 +11,7 @@ function formatRecordedDate(value: Date | string) {
 export const getProgressSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
-    const [weeklyResult, weightResult, recordsResult, exercisesResult] = await Promise.all([
+    const [weeklyResult, weightResult, dietResult, recordsResult, exercisesResult] = await Promise.all([
       query(
         `SELECT COUNT(DISTINCT ws.id)::int AS workouts,
                 COUNT(ls.id) FILTER (WHERE ls.is_completed = TRUE)::int AS sets,
@@ -36,6 +36,13 @@ export const getProgressSummary = async (req: AuthRequest, res: Response): Promi
          FROM body_weight_logs
          WHERE user_id = $1
          ORDER BY recorded_on DESC`,
+        [userId]
+      ),
+      query(
+        `SELECT id, meal_type, description, calories, recorded_on
+         FROM diet_logs
+         WHERE user_id = $1
+         ORDER BY recorded_on DESC, created_at DESC`,
         [userId]
       ),
       query(
@@ -79,6 +86,13 @@ export const getProgressSummary = async (req: AuthRequest, res: Response): Promi
         weightKg: Number(row.weight_kg),
         recordedOn: formatRecordedDate(row.recorded_on),
         notes: row.notes,
+      })),
+      dietEntries: dietResult.rows.map((row) => ({
+        id: row.id,
+        mealType: row.meal_type,
+        description: row.description,
+        calories: row.calories === null ? null : Number(row.calories),
+        recordedOn: formatRecordedDate(row.recorded_on),
       })),
       personalRecords: recordsResult.rows.map((row) => ({
         exerciseId: row.exercise_id,
@@ -181,6 +195,66 @@ export const deleteBodyWeight = async (req: AuthRequest, res: Response): Promise
     res.status(500).json({ error: 'Internal server error' });
   } finally {
     client.release();
+  }
+};
+
+export const logDietEntry = async (req: AuthRequest, res: Response): Promise<void> => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400).json({ errors: errors.array() });
+    return;
+  }
+
+  try {
+    const result = await query(
+      `INSERT INTO diet_logs (user_id, meal_type, description, calories, recorded_on)
+       VALUES ($1, $2, $3, $4, COALESCE($5::date, CURRENT_DATE))
+       RETURNING id, meal_type, description, calories, recorded_on`,
+      [
+        req.user!.userId,
+        req.body.mealType,
+        req.body.description,
+        req.body.calories ?? null,
+        req.body.recordedOn ?? null,
+      ]
+    );
+    const row = result.rows[0];
+    res.status(201).json({
+      entry: {
+        id: row.id,
+        mealType: row.meal_type,
+        description: row.description,
+        calories: row.calories === null ? null : Number(row.calories),
+        recordedOn: formatRecordedDate(row.recorded_on),
+      },
+    });
+  } catch (error) {
+    console.error('Log diet entry error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const deleteDietEntry = async (req: AuthRequest, res: Response): Promise<void> => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400).json({ errors: errors.array() });
+    return;
+  }
+
+  try {
+    const result = await query(
+      'DELETE FROM diet_logs WHERE id = $1 AND user_id = $2 RETURNING id',
+      [req.params.id, req.user!.userId]
+    );
+    if (!result.rows[0]) {
+      res.status(404).json({ error: 'Diet entry not found' });
+      return;
+    }
+
+    res.json({ message: 'Diet entry deleted', entryId: result.rows[0].id });
+  } catch (error) {
+    console.error('Delete diet entry error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 

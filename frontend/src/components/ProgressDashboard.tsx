@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { ExerciseHistory, ProgressSummary, deleteBodyWeight, getExerciseHistory, getProgressSummary, logBodyWeight } from '../api';
+import { ExerciseHistory, ProgressSummary, deleteBodyWeight, deleteDietEntry, getExerciseHistory, getProgressSummary, logBodyWeight, logDietEntry } from '../api';
 import { UnitPreference, formatWeight, fromKilograms, toKilograms } from '../units';
 
 type Props = {
@@ -44,9 +44,16 @@ export function ProgressDashboard({ accessToken, currentWeight, unitPreference, 
   const [exerciseId, setExerciseId] = useState('');
   const [weight, setWeight] = useState(currentWeight == null ? '' : String(fromKilograms(currentWeight, unitPreference)));
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dietDate, setDietDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [mealType, setMealType] = useState<ProgressSummary['dietEntries'][number]['mealType']>('breakfast');
+  const [description, setDescription] = useState('');
+  const [calories, setCalories] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingDiet, setSavingDiet] = useState(false);
   const [confirmingWeightId, setConfirmingWeightId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmingDietId, setConfirmingDietId] = useState<string | null>(null);
+  const [deletingDietId, setDeletingDietId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   async function refresh() {
@@ -102,6 +109,41 @@ export function ProgressDashboard({ accessToken, currentWeight, unitPreference, 
     }
   }
 
+  async function submitDietEntry(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingDiet(true);
+    setError('');
+    try {
+      await logDietEntry(accessToken, {
+        mealType,
+        description: description.trim(),
+        ...(calories === '' ? {} : { calories: Number(calories) }),
+        recordedOn: dietDate,
+      });
+      setDescription('');
+      setCalories('');
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save diet entry');
+    } finally {
+      setSavingDiet(false);
+    }
+  }
+
+  async function removeDietEntry(entry: ProgressSummary['dietEntries'][number]) {
+    setDeletingDietId(entry.id);
+    setError('');
+    try {
+      await deleteDietEntry(accessToken, entry.id);
+      await refresh();
+      setConfirmingDietId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete diet entry');
+    } finally {
+      setDeletingDietId(null);
+    }
+  }
+
   async function removeWeight(entry: ProgressSummary['bodyWeight'][number]) {
     setDeletingId(entry.id);
     setError('');
@@ -121,7 +163,7 @@ export function ProgressDashboard({ accessToken, currentWeight, unitPreference, 
   return (
     <section className="progress-dashboard">
       <div className="progress-heading">
-        <div><p className="section-label">Progress</p><h2>Your training trend</h2></div>
+        <div><p className="section-label">Health &amp; training</p><h2>Your progress</h2></div>
         {error && <p className="progress-error" role="alert">{error}</p>}
       </div>
       <div className="progress-metrics">
@@ -160,6 +202,56 @@ export function ProgressDashboard({ accessToken, currentWeight, unitPreference, 
               ))}
             </div>
           )}
+        </section>
+        <section className="progress-panel">
+          <div className="progress-panel-heading"><div><h3>Diet</h3><p>Keep a simple meal log</p></div></div>
+          <form className="diet-checkin" onSubmit={submitDietEntry}>
+            <label>
+              Meal
+              <select value={mealType} onChange={(event) => setMealType(event.target.value as ProgressSummary['dietEntries'][number]['mealType'])}>
+                <option value="breakfast">Breakfast</option>
+                <option value="lunch">Lunch</option>
+                <option value="dinner">Dinner</option>
+                <option value="snack">Snack</option>
+              </select>
+            </label>
+            <label>
+              Date
+              <input type="date" value={dietDate} onChange={(event) => setDietDate(event.target.value)} required />
+            </label>
+            <label className="diet-description">
+              Food / meal
+              <input type="text" maxLength={500} value={description} onChange={(event) => setDescription(event.target.value)} required />
+            </label>
+            <label>
+              Calories (optional)
+              <input type="number" min="0" max="10000" step="1" value={calories} onChange={(event) => setCalories(event.target.value)} />
+            </label>
+            <button className="primary-button" disabled={savingDiet}>{savingDiet ? 'Saving...' : 'Log meal'}</button>
+          </form>
+          <div className="diet-log-list">
+            {summary?.dietEntries?.length ? summary.dietEntries.map((entry) => (
+              <div className="diet-log-row" key={entry.id}>
+                <div className="diet-log-details">
+                  <strong>{entry.mealType[0].toUpperCase() + entry.mealType.slice(1)}</strong>
+                  <span>{formatChartDate(entry.recordedOn)} · {entry.description}</span>
+                </div>
+                {entry.calories !== null && <span className="diet-calories">{entry.calories} cal</span>}
+                <div className="weight-delete-actions">
+                  {confirmingDietId === entry.id ? (
+                    <>
+                      <button type="button" className="confirm-delete" aria-label={`Confirm deletion of ${entry.mealType} entry`} disabled={deletingDietId === entry.id} onClick={() => removeDietEntry(entry)}>
+                        {deletingDietId === entry.id ? 'Deleting...' : 'Confirm'}
+                      </button>
+                      <button type="button" aria-label={`Cancel deletion of ${entry.mealType} entry`} disabled={deletingDietId === entry.id} onClick={() => setConfirmingDietId(null)}>Cancel</button>
+                    </>
+                  ) : (
+                    <button type="button" className="delete-trigger" aria-label={`Delete ${entry.mealType} entry`} onClick={() => setConfirmingDietId(entry.id)}>Delete</button>
+                  )}
+                </div>
+              </div>
+            )) : <p className="progress-empty">Your meal log will appear here.</p>}
+          </div>
         </section>
         <section className="progress-panel">
           <div className="progress-panel-heading">

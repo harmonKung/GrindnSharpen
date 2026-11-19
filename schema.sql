@@ -275,6 +275,22 @@ CREATE TABLE IF NOT EXISTS body_weight_logs (
 CREATE INDEX IF NOT EXISTS idx_body_weight_logs_user_date
   ON body_weight_logs(user_id, recorded_on DESC);
 
+-- DIET LOGS
+
+CREATE TABLE IF NOT EXISTS diet_logs (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  meal_type    VARCHAR(20) NOT NULL
+    CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack')),
+  description  VARCHAR(500) NOT NULL CHECK (length(trim(description)) > 0),
+  calories     INTEGER CHECK (calories BETWEEN 0 AND 10000),
+  recorded_on  DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_diet_logs_user_date
+  ON diet_logs(user_id, recorded_on DESC, created_at DESC);
+
 
 -- AUTO-UPDATE updated_at trigger
 
