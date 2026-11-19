@@ -4,6 +4,8 @@ import {
   getExerciseHistory,
   getProgressSummary,
   deleteBodyWeight,
+  deleteDietEntry,
+  logDietEntry,
   logBodyWeight,
 } from '../controllers/progressController';
 import { authenticate } from '../middleware/auth';
@@ -18,7 +20,7 @@ router.post(
   '/body-weight',
   [
     body('weightKg').isFloat({ min: 20, max: 500 }),
-    body('recordedOn').optional().isISO8601().toDate(),
+    body('recordedOn').optional().isISO8601(),
     body('notes').optional({ nullable: true }).isString().isLength({ max: 500 }),
   ],
   logBodyWeight
@@ -28,6 +30,23 @@ router.delete(
   '/body-weight/:id',
   [param('id').isUUID().withMessage('Valid weight entry ID required')],
   deleteBodyWeight
+);
+
+router.post(
+  '/diet',
+  [
+    body('mealType').isIn(['breakfast', 'lunch', 'dinner', 'snack']),
+    body('description').isString().trim().isLength({ min: 1, max: 500 }),
+    body('calories').optional({ nullable: true }).isInt({ min: 0, max: 10000 }),
+    body('recordedOn').optional().isISO8601(),
+  ],
+  logDietEntry
+);
+
+router.delete(
+  '/diet/:id',
+  [param('id').isUUID().withMessage('Valid diet entry ID required')],
+  deleteDietEntry
 );
 
 router.get(

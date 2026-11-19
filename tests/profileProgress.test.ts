@@ -176,6 +176,13 @@ describe('progress API', () => {
         notes: null,
       }]))
       .mockReturnValueOnce(result([{
+        id: '6958117f-e589-42d6-855c-3219158f6aff',
+        meal_type: 'lunch',
+        description: 'Rice and vegetables',
+        calories: 620,
+        recorded_on: new Date('2026-06-24T04:00:00.000Z'),
+      }]))
+      .mockReturnValueOnce(result([{
         exercise_id: exerciseId,
         name: 'Bench Press',
         weight_kg: '80.00',
@@ -200,9 +207,67 @@ describe('progress API', () => {
       recordedOn: '2026-06-24',
       notes: null,
     });
+    expect(response.body.dietEntries[0]).toEqual({
+      id: '6958117f-e589-42d6-855c-3219158f6aff',
+      mealType: 'lunch',
+      description: 'Rice and vegetables',
+      calories: 620,
+      recordedOn: '2026-06-24',
+    });
     expect(response.body.personalRecords[0].estimatedOneRepMax).toBe(106.7);
     expect(response.body.trackedExercises[0].primaryMuscle).toBe('chest');
-    expect(databaseMocks.query).toHaveBeenCalledTimes(4);
+    expect(databaseMocks.query).toHaveBeenCalledTimes(5);
+  });
+
+  it('validates diet entries before writing', async () => {
+    const response = await authenticated('post', '/api/progress/diet')
+      .send({ mealType: 'brunch', description: '', calories: -1 });
+
+    expect(response.status).toBe(400);
+    expect(databaseMocks.query).not.toHaveBeenCalled();
+  });
+
+  it('logs a diet entry for the authenticated user', async () => {
+    const dietId = '6958117f-e589-42d6-855c-3219158f6aff';
+    databaseMocks.query.mockReturnValueOnce(result([{
+      id: dietId,
+      meal_type: 'lunch',
+      description: 'Rice and vegetables',
+      calories: 620,
+      recorded_on: new Date('2026-06-24T04:00:00.000Z'),
+    }]));
+
+    const response = await authenticated('post', '/api/progress/diet')
+      .send({
+        mealType: 'lunch',
+        description: 'Rice and vegetables',
+        calories: 620,
+        recordedOn: '2026-06-24',
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.entry).toEqual({
+      id: dietId,
+      mealType: 'lunch',
+      description: 'Rice and vegetables',
+      calories: 620,
+      recordedOn: '2026-06-24',
+    });
+    expect(databaseMocks.query.mock.calls[0][1]).toEqual([
+      userId, 'lunch', 'Rice and vegetables', 620, '2026-06-24',
+    ]);
+  });
+
+  it('does not delete another user’s diet entry', async () => {
+    databaseMocks.query.mockReturnValueOnce(result());
+
+    const response = await authenticated('delete', '/api/progress/diet/6958117f-e589-42d6-855c-3219158f6aff');
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe('Diet entry not found');
+    expect(databaseMocks.query.mock.calls[0][1]).toEqual([
+      '6958117f-e589-42d6-855c-3219158f6aff', userId,
+    ]);
   });
 
   it('validates weight check-ins before opening a transaction', async () => {

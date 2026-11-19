@@ -702,7 +702,7 @@ function App() {
             </section>
 
             <section className="dashboard-card progress-dashboard-card" aria-labelledby="dashboard-progress-title">
-              <h2 className="dashboard-card-title" id="dashboard-progress-title">Training trend</h2>
+              <h2 className="dashboard-card-title" id="dashboard-progress-title">Health &amp; training</h2>
               <ProgressDashboard
                 accessToken={session.accessToken}
                 currentWeight={profile.bodyWeightKg}

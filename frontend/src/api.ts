@@ -210,6 +210,13 @@ export type ProgressSummary = {
     recordedOn: string;
     notes: string | null;
   }>;
+  dietEntries: Array<{
+    id: string;
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+    description: string;
+    calories: number | null;
+    recordedOn: string;
+  }>;
   personalRecords: Array<{
     exerciseId: string;
     name: string;
@@ -393,6 +400,30 @@ export function logBodyWeight(
 export function deleteBodyWeight(accessToken: string, entryId: string) {
   return request<{ message: string; latestWeightKg: number | null }>(
     `/api/progress/body-weight/${entryId}`,
+    { method: 'DELETE' },
+    accessToken
+  );
+}
+
+export function logDietEntry(
+  accessToken: string,
+  entry: {
+    mealType: ProgressSummary['dietEntries'][number]['mealType'];
+    description: string;
+    calories?: number | null;
+    recordedOn?: string;
+  }
+) {
+  return request<{ entry: ProgressSummary['dietEntries'][number] }>(
+    '/api/progress/diet',
+    { method: 'POST', body: JSON.stringify(entry) },
+    accessToken
+  );
+}
+
+export function deleteDietEntry(accessToken: string, entryId: string) {
+  return request<{ message: string; entryId: string }>(
+    `/api/progress/diet/${entryId}`,
     { method: 'DELETE' },
     accessToken
   );

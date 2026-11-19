@@ -756,8 +756,7 @@ textarea:focus {
 }
 
 .progress-dashboard-card .progress-panel {
-  max-height: 360px;
-  overflow: hidden;
+  max-height: none;
 }
 
 .progress-dashboard-card .trend-chart {
@@ -1181,6 +1180,71 @@ textarea:focus {
 
 .weight-log-row button:disabled {
   opacity: 0.55;
+}
+
+.diet-checkin {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+  margin-top: 16px;
+}
+
+.diet-checkin label {
+  min-width: 0;
+  font-size: 0.72rem;
+}
+
+.diet-checkin input,
+.diet-checkin select {
+  min-height: 40px;
+}
+
+.diet-checkin .diet-description {
+  grid-column: 1 / -1;
+}
+
+.diet-checkin button {
+  min-height: 40px;
+  grid-column: 1 / -1;
+}
+
+.diet-log-list {
+  max-height: 190px;
+  margin-top: 14px;
+  border-top: 1px solid #eadfd5;
+  overflow-y: auto;
+}
+
+.diet-log-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 48px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eadfd5;
+  font-size: 0.76rem;
+}
+
+.diet-log-details {
+  min-width: 0;
+}
+
+.diet-log-details strong,
+.diet-log-details span {
+  display: block;
+}
+
+.diet-log-details span {
+  margin-top: 3px;
+  color: #7b6655;
+  overflow-wrap: anywhere;
+}
+
+.diet-calories {
+  color: #7b6655;
+  white-space: nowrap;
 }
 
 .trend-chart {

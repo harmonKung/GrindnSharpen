@@ -8,6 +8,8 @@ const apiMocks = vi.hoisted(() => ({
   getExerciseHistory: vi.fn(),
   logBodyWeight: vi.fn(),
   deleteBodyWeight: vi.fn(),
+  logDietEntry: vi.fn(),
+  deleteDietEntry: vi.fn(),
 }));
 
 vi.mock('../api', () => apiMocks);
@@ -21,6 +23,13 @@ const summary = {
     weightKg: 82,
     recordedOn: '2026-06-24',
     notes: null,
+  }],
+  dietEntries: [{
+    id: 'diet-1',
+    mealType: 'lunch' as const,
+    description: 'Rice and vegetables',
+    calories: 620,
+    recordedOn: '2026-06-24',
   }],
   personalRecords: [{
     exerciseId: 'exercise-1',
@@ -58,6 +67,8 @@ describe('ProgressDashboard', () => {
       message: 'Weight entry deleted',
       latestWeightKg: 81,
     });
+    apiMocks.logDietEntry.mockReset().mockResolvedValue({ entry: summary.dietEntries[0] });
+    apiMocks.deleteDietEntry.mockReset().mockResolvedValue({ message: 'Diet entry deleted', entryId: 'diet-1' });
   });
 
   it('has no automated accessibility violations', async () => {
@@ -132,5 +143,47 @@ describe('ProgressDashboard', () => {
 
     await waitFor(() => expect(apiMocks.deleteBodyWeight).toHaveBeenCalledWith('token', 'weight-1'));
     expect(onWeightLogged).toHaveBeenCalledWith(81);
+  });
+
+  it('logs a diet entry with meal, food, and optional calories', async () => {
+    const user = userEvent.setup();
+    render(
+      <ProgressDashboard
+        accessToken="token"
+        currentWeight={82}
+        unitPreference="kg"
+        onWeightLogged={vi.fn()}
+      />
+    );
+
+    await user.selectOptions(await screen.findByLabelText('Meal'), 'dinner');
+    await user.type(screen.getByLabelText('Food / meal'), 'Salmon and potatoes');
+    await user.type(screen.getByLabelText('Calories (optional)'), '700');
+    await user.click(screen.getByRole('button', { name: 'Log meal' }));
+
+    await waitFor(() => expect(apiMocks.logDietEntry).toHaveBeenCalledWith('token', expect.objectContaining({
+      mealType: 'dinner',
+      description: 'Salmon and potatoes',
+      calories: 700,
+    })));
+    expect(screen.getByText(/Rice and vegetables/)).toBeInTheDocument();
+  });
+
+  it('requires confirmation before deleting a diet entry', async () => {
+    const user = userEvent.setup();
+    render(
+      <ProgressDashboard
+        accessToken="token"
+        currentWeight={82}
+        unitPreference="kg"
+        onWeightLogged={vi.fn()}
+      />
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Delete lunch entry' }));
+    expect(apiMocks.deleteDietEntry).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Confirm deletion of lunch entry' }));
+
+    await waitFor(() => expect(apiMocks.deleteDietEntry).toHaveBeenCalledWith('token', 'diet-1'));
   });
 });

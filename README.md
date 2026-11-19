@@ -78,6 +78,7 @@ Open:
 - Previous-performance targets and progressive-overload suggestions
 - Workout history with deletion controls
 - Body-weight check-ins, trends, and deletion controls
+- Diet logging by meal, date, and optional calories
 - Weekly training metrics, strength trends, and personal records
 - Responsive desktop and mobile interface
 - Isolated authentication, profile, workout, progress, and AI fallback test suites
