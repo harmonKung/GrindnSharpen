@@ -4,7 +4,7 @@ import {
   getProfile,
   saveOnboardingStep,
   updateProfile,
-} from '../controllers/profileControllers';
+} from '../controllers/profileController';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();

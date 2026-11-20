@@ -42,7 +42,7 @@ Update `.env` with your PostgreSQL password and secure JWT secrets.
 Start only PostgreSQL with Docker:
 
 ```bash
-docker compose -f src/docker-compose.yml up -d db
+docker compose up -d db
 ```
 
 The Docker database uses `postgres` as its development password. Match that value in your local `.env`, then initialize the database:
@@ -195,12 +195,15 @@ All protected endpoints require `Authorization: Bearer <access-token>`.
 
 ```text
 frontend/        React and Vite client
+src/config       Backend configuration
 src/controllers  Express request handlers
 src/routes       API route definitions
 src/services     Routine and progression logic
 src/db           PostgreSQL connection and seed scripts
 tests/           Isolated backend API tests
 schema.sql       Idempotent database schema
+docker-compose.yml  Local development services
+render.yaml      Render deployment configuration
 ```
 
 ## Security Notes

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { query } from '../database';
+import { query } from './database';
 
 async function migrate() {
   console.log('Running database migrations...');
