@@ -33,34 +33,46 @@ export function WorkoutLogger({
 }: WorkoutLoggerProps) {
   const [drafts, setDrafts] = useState<Record<string, SetDraft>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [savedKey, setSavedKey] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
-    const nextDrafts: Record<string, SetDraft> = {};
+    setDrafts((current) => {
+      const nextDrafts = { ...current };
 
-    for (const exercise of workout.exercises) {
-      const setCount = exercise.prescribedSets || 1;
-      for (let setNumber = 1; setNumber <= setCount; setNumber++) {
-        const logged = exercise.sets.find(
-          (set) => set.setType === 'working' && set.setNumber === setNumber
-        );
-        const suggestedWeight = exercise.recommendation.weightKg;
-        const suggestedReps = exercise.recommendation.reps;
-        nextDrafts[draftKey(exercise.id, setNumber)] = {
-          weightKg: logged?.weightKg == null
-            ? suggestedWeight == null ? '' : String(fromKilograms(suggestedWeight, unitPreference))
-            : String(fromKilograms(logged.weightKg, unitPreference)),
-          reps: logged ? String(logged.reps) : suggestedReps == null ? '' : String(suggestedReps),
-          rir: logged?.rir == null
-            ? exercise.targetRir == null ? '' : String(exercise.targetRir)
-            : String(logged.rir),
-        };
+      for (const exercise of workout.exercises) {
+        const setCount = exercise.prescribedSets || 1;
+        for (let setNumber = 1; setNumber <= setCount; setNumber++) {
+          const key = draftKey(exercise.id, setNumber);
+          if (nextDrafts[key]) continue;
+
+          const logged = exercise.sets.find(
+            (set) => set.setType === 'working' && set.setNumber === setNumber
+          );
+          const suggestedWeight = exercise.recommendation.weightKg;
+          const suggestedReps = exercise.recommendation.reps;
+          nextDrafts[key] = {
+            weightKg: logged?.weightKg == null
+              ? suggestedWeight == null ? '' : String(fromKilograms(suggestedWeight, unitPreference))
+              : String(fromKilograms(logged.weightKg, unitPreference)),
+            reps: logged ? String(logged.reps) : suggestedReps == null ? '' : String(suggestedReps),
+            rir: logged?.rir == null
+              ? exercise.targetRir == null ? '' : String(exercise.targetRir)
+              : String(logged.rir),
+          };
+        }
       }
-    }
 
-    setDrafts(nextDrafts);
+      return nextDrafts;
+    });
   }, [workout, unitPreference]);
+
+  useEffect(() => {
+    if (!savedKey) return;
+    const timeout = window.setTimeout(() => setSavedKey(null), 2000);
+    return () => window.clearTimeout(timeout);
+  }, [savedKey]);
 
   useEffect(() => {
     if (!showHelp) return;
@@ -88,6 +100,7 @@ export function WorkoutLogger({
     setSavingKey(key);
     try {
       await onLogSet(exerciseId, setNumber, draft);
+      setSavedKey(key);
     } finally {
       setSavingKey(null);
     }
@@ -215,9 +228,6 @@ export function WorkoutLogger({
               const setNumber = index + 1;
               const key = draftKey(exercise.id, setNumber);
               const draft = drafts[key] || { weightKg: '', reps: '', rir: '' };
-              const logged = exercise.sets.find(
-                (set) => set.setType === 'working' && set.setNumber === setNumber
-              );
               const previous = exercise.previousPerformance?.sets.find(
                 (set) => set.setNumber === setNumber
               );
@@ -261,11 +271,11 @@ export function WorkoutLogger({
                   />
                   <button
                     type="button"
-                    className={logged ? 'set-button saved' : 'set-button'}
+                    className={savedKey === key ? 'set-button saved' : 'set-button'}
                     disabled={!draft.reps || savingKey === key}
                     onClick={() => saveSet(exercise.id, setNumber)}
                   >
-                    {savingKey === key ? 'Saving' : logged ? 'Saved' : 'Log'}
+                    {savingKey === key ? 'Saving' : savedKey === key ? 'Saved' : 'Log'}
                   </button>
                 </div>
               );
