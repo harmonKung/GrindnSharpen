@@ -44,6 +44,86 @@ const workout: Workout = {
 };
 
 describe('WorkoutLogger', () => {
+  it('preserves other set drafts after saving and allows the set to be logged again', async () => {
+    const user = userEvent.setup();
+    const onLogSet = vi.fn().mockResolvedValue(undefined);
+    const { rerender } = render(
+      <WorkoutLogger
+        workout={workout}
+        unitPreference="kg"
+        onLogSet={onLogSet}
+        onComplete={vi.fn()}
+        onExit={vi.fn()}
+      />
+    );
+
+    const weightInput = screen.getByLabelText('Bench Press set 1 weight in kilograms');
+    const repsInput = screen.getByLabelText('Bench Press set 1 reps');
+    const rirInput = screen.getByLabelText('Bench Press set 1 reps in reserve');
+    await waitFor(() => expect(repsInput).toHaveValue(11));
+    await user.clear(weightInput);
+    await user.type(weightInput, '85');
+    await user.clear(repsInput);
+    await user.type(repsInput, '10');
+    await user.clear(rirInput);
+    await user.type(rirInput, '1');
+    await user.click(screen.getByRole('button', { name: 'Log' }));
+
+    expect(screen.getByRole('button', { name: 'Saved' })).toBeEnabled();
+    rerender(
+      <WorkoutLogger
+        workout={{
+          ...workout,
+          exercises: [{
+            ...workout.exercises[0],
+            sets: [{
+              id: 'logged-set-1',
+              setNumber: 1,
+              setType: 'working',
+              weightKg: 85,
+              reps: 10,
+              rir: 1,
+              rpe: null,
+              isCompleted: true,
+              completedAt: '2026-06-24T12:30:00.000Z',
+              notes: null,
+            }],
+          }],
+        }}
+        unitPreference="kg"
+        onLogSet={onLogSet}
+        onComplete={vi.fn()}
+        onExit={vi.fn()}
+      />
+    );
+
+    expect(weightInput).toHaveValue(85);
+    expect(repsInput).toHaveValue(10);
+    expect(rirInput).toHaveValue(1);
+    await user.click(screen.getByRole('button', { name: 'Saved' }));
+    expect(onLogSet).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears the saved status after a short delay', async () => {
+    const user = userEvent.setup();
+    render(
+      <WorkoutLogger
+        workout={workout}
+        unitPreference="kg"
+        onLogSet={vi.fn().mockResolvedValue(undefined)}
+        onComplete={vi.fn()}
+        onExit={vi.fn()}
+      />
+    );
+
+    await waitFor(() => expect(screen.getByLabelText('Bench Press set 1 reps')).toHaveValue(11));
+    await user.click(screen.getByRole('button', { name: 'Log' }));
+    expect(await screen.findByRole('button', { name: 'Saved' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Log' })).toBeInTheDocument(), {
+      timeout: 3000,
+    });
+  });
+
   it('has no automated accessibility violations', async () => {
     const { container } = render(
       <WorkoutLogger
