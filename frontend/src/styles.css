@@ -1120,6 +1120,33 @@ textarea:focus {
   font-size: 0.75rem;
 }
 
+.deload-alert {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.7fr) 1.3fr;
+  gap: 8px 20px;
+  margin: 0 0 26px;
+  padding: 16px 18px;
+  border: 1px solid #d7a66f;
+  border-radius: 8px;
+  background: #fff8e9;
+}
+
+.deload-alert h3,
+.deload-alert p {
+  margin-bottom: 0;
+}
+
+.deload-alert.monitor {
+  border-color: #d5be73;
+  background: #fffbec;
+}
+
+.deload-alert .deload-advice {
+  grid-column: 2;
+  color: #6f5847;
+  font-size: 0.82rem;
+}
+
 .progress-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(280px, 1fr));
@@ -1393,6 +1420,14 @@ textarea:focus {
 }
 
 @media (max-width: 640px) {
+  .deload-alert {
+    grid-template-columns: 1fr;
+  }
+
+  .deload-alert .deload-advice {
+    grid-column: 1;
+  }
+
   .brand-panel,
   .work-panel {
     padding: 24px;

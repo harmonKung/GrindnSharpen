@@ -14,6 +14,7 @@ vi.mock('../src/db/database', () => ({
 
 import app from '../src/app';
 import { signAccessToken } from '../src/config/jwt';
+import { buildDeloadAssessment } from '../src/services/progressionService';
 
 const userId = '1958117f-e589-42d6-855c-3219158f6aff';
 const profileId = '2958117f-e589-42d6-855c-3219158f6aff';
@@ -145,6 +146,35 @@ describe('profile API', () => {
   });
 });
 
+describe('deload assessment', () => {
+  it('recommends a deload when volume rises and sets become very hard', () => {
+    const assessment = buildDeloadAssessment({
+      recentVolumeKg: 8400,
+      previousVolumeKg: 7000,
+      recentWorkouts: 3,
+      previousWorkouts: 3,
+      recentAverageRir: 1,
+      recentHardSetRatio: 0.6,
+    });
+
+    expect(assessment.status).toBe('needed');
+    expect(assessment.volumeChangePct).toBe(20);
+  });
+
+  it('does not recommend a deload without enough training history', () => {
+    const assessment = buildDeloadAssessment({
+      recentVolumeKg: 2000,
+      previousVolumeKg: 1000,
+      recentWorkouts: 1,
+      previousWorkouts: 2,
+      recentAverageRir: 0,
+      recentHardSetRatio: 1,
+    });
+
+    expect(assessment.status).toBe('none');
+  });
+});
+
 describe('progress API', () => {
   const client = {
     query: vi.fn(),
@@ -195,6 +225,14 @@ describe('progress API', () => {
         name: 'Bench Press',
         primary_muscle: 'chest',
         last_trained_at: '2026-06-23T12:00:00.000Z',
+      }]))
+      .mockReturnValueOnce(result([{
+        recent_volume_kg: '8400',
+        previous_volume_kg: '7000',
+        recent_workouts: 3,
+        previous_workouts: 3,
+        recent_average_rir: '1.2',
+        recent_hard_set_ratio: '0.6',
       }]));
 
     const response = await authenticated('get', '/api/progress/summary');
@@ -216,7 +254,8 @@ describe('progress API', () => {
     });
     expect(response.body.personalRecords[0].estimatedOneRepMax).toBe(106.7);
     expect(response.body.trackedExercises[0].primaryMuscle).toBe('chest');
-    expect(databaseMocks.query).toHaveBeenCalledTimes(5);
+    expect(response.body.deload.status).toBe('needed');
+    expect(databaseMocks.query).toHaveBeenCalledTimes(6);
   });
 
   it('validates diet entries before writing', async () => {

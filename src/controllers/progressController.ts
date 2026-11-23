@@ -2,7 +2,11 @@ import { Response } from 'express';
 import { validationResult } from 'express-validator';
 import { getClient, query } from '../db/database';
 import { AuthRequest } from '../middleware/auth';
-import { buildProgressionRecommendation, PerformanceSet } from '../services/progressionService';
+import {
+  buildDeloadAssessment,
+  buildProgressionRecommendation,
+  PerformanceSet,
+} from '../services/progressionService';
 
 function formatRecordedDate(value: Date | string) {
   return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
@@ -11,7 +15,7 @@ function formatRecordedDate(value: Date | string) {
 export const getProgressSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
-    const [weeklyResult, weightResult, dietResult, recordsResult, exercisesResult] = await Promise.all([
+    const [weeklyResult, weightResult, dietResult, recordsResult, exercisesResult, deloadResult] = await Promise.all([
       query(
         `SELECT COUNT(DISTINCT ws.id)::int AS workouts,
                 COUNT(ls.id) FILTER (WHERE ls.is_completed = TRUE)::int AS sets,
@@ -72,15 +76,59 @@ export const getProgressSummary = async (req: AuthRequest, res: Response): Promi
          ORDER BY MAX(ws.completed_at) DESC, e.name`,
         [userId]
       ),
+      query(
+        `WITH recent AS (
+           SELECT ws.id, ls.weight_kg, ls.reps, ls.rir
+           FROM workout_sessions ws
+           JOIN workout_session_exercises wse ON wse.workout_session_id = ws.id
+           JOIN logged_sets ls ON ls.workout_session_exercise_id = wse.id
+           WHERE ws.user_id = $1 AND ws.status = 'completed'
+             AND ws.completed_at >= CURRENT_DATE - INTERVAL '21 days'
+             AND ls.is_completed = TRUE AND ls.set_type = 'working'
+         ), previous AS (
+           SELECT ws.id, ls.weight_kg, ls.reps, ls.rir
+           FROM workout_sessions ws
+           JOIN workout_session_exercises wse ON wse.workout_session_id = ws.id
+           JOIN logged_sets ls ON ls.workout_session_exercise_id = wse.id
+           WHERE ws.user_id = $1 AND ws.status = 'completed'
+             AND ws.completed_at >= CURRENT_DATE - INTERVAL '42 days'
+             AND ws.completed_at < CURRENT_DATE - INTERVAL '21 days'
+             AND ls.is_completed = TRUE AND ls.set_type = 'working'
+         )
+         SELECT
+           COALESCE(SUM(r.weight_kg * r.reps), 0) AS recent_volume_kg,
+           COALESCE(SUM(p.weight_kg * p.reps), 0) AS previous_volume_kg,
+           (SELECT COUNT(DISTINCT id) FROM recent) AS recent_workouts,
+           (SELECT COUNT(DISTINCT id) FROM previous) AS previous_workouts,
+           (SELECT AVG(rir) FROM recent WHERE rir IS NOT NULL) AS recent_average_rir,
+           (SELECT COUNT(*) FILTER (WHERE rir <= 1)::float
+                   / NULLIF(COUNT(*) FILTER (WHERE rir IS NOT NULL), 0)
+            FROM recent) AS recent_hard_set_ratio`,
+        [userId]
+      ),
     ]);
 
     const weekly = weeklyResult.rows[0];
+    const deloadRow = deloadResult.rows[0] ?? {};
+    const deload = buildDeloadAssessment({
+      recentVolumeKg: Number(deloadRow.recent_volume_kg),
+      previousVolumeKg: Number(deloadRow.previous_volume_kg),
+      recentWorkouts: Number(deloadRow.recent_workouts),
+      previousWorkouts: Number(deloadRow.previous_workouts),
+      recentAverageRir: deloadRow.recent_average_rir === null
+        ? null
+        : Number(deloadRow.recent_average_rir),
+      recentHardSetRatio: deloadRow.recent_hard_set_ratio === null
+        ? 0
+        : Number(deloadRow.recent_hard_set_ratio),
+    });
     res.json({
       weekly: {
         workouts: weekly.workouts,
         sets: weekly.sets,
         volumeKg: Number(weekly.volume_kg),
       },
+      deload,
       bodyWeight: weightResult.rows.map((row) => ({
         id: row.id,
         weightKg: Number(row.weight_kg),
