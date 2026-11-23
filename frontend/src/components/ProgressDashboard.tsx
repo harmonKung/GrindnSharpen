@@ -171,6 +171,20 @@ export function ProgressDashboard({ accessToken, currentWeight, unitPreference, 
         <div><strong>{summary?.weekly.sets ?? 0}</strong><span>Working sets</span></div>
         <div><strong>{formatWeight(summary?.weekly.volumeKg ?? 0, unitPreference, 0)}</strong><span>Training volume</span></div>
       </div>
+      {summary?.deload && summary.deload.status !== 'none' && (
+        <section className={`deload-alert ${summary.deload.status}`} role="status">
+          <div>
+            <p className="section-label">Training readiness</p>
+            <h3>{summary.deload.status === 'needed' ? 'Consider a deload' : 'Watch your recovery'}</h3>
+          </div>
+          <p>{summary.deload.reason}</p>
+          {summary.deload.status === 'needed' && (
+            <p className="deload-advice">
+              Reduce volume or load for about one week, keep movement quality high, and aim for 3-4 RIR.
+            </p>
+          )}
+        </section>
+      )}
       <div className="progress-grid">
         <section className="progress-panel">
           <div className="progress-panel-heading"><div><h3>Body weight</h3><p>Daily check-ins</p></div></div>

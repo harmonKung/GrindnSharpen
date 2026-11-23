@@ -204,6 +204,11 @@ export type ExerciseHistory = {
 
 export type ProgressSummary = {
   weekly: { workouts: number; sets: number; volumeKg: number };
+  deload?: {
+    status: 'needed' | 'monitor' | 'none';
+    reason: string;
+    volumeChangePct: number;
+  };
   bodyWeight: Array<{
     id: string;
     weightKg: number;

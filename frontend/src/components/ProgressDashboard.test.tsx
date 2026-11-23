@@ -18,6 +18,11 @@ import { ProgressDashboard } from './ProgressDashboard';
 
 const summary = {
   weekly: { workouts: 3, sets: 24, volumeKg: 8000 },
+  deload: {
+    status: 'none' as const,
+    reason: 'No strong fatigue or workload signal is present right now.',
+    volumeChangePct: 0,
+  },
   bodyWeight: [{
     id: 'weight-1',
     weightKg: 82,
@@ -69,6 +74,29 @@ describe('ProgressDashboard', () => {
     });
     apiMocks.logDietEntry.mockReset().mockResolvedValue({ entry: summary.dietEntries[0] });
     apiMocks.deleteDietEntry.mockReset().mockResolvedValue({ message: 'Diet entry deleted', entryId: 'diet-1' });
+  });
+
+  it('shows deload guidance when the API recommends it', async () => {
+    apiMocks.getProgressSummary.mockResolvedValue({
+      ...summary,
+      deload: {
+        status: 'needed',
+        reason: 'Your workload has risen while most recent working sets have been close to failure.',
+        volumeChangePct: 20,
+      },
+    });
+
+    render(
+      <ProgressDashboard
+        accessToken="token"
+        currentWeight={82}
+        unitPreference="kg"
+        onWeightLogged={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Consider a deload' })).toBeInTheDocument();
+    expect(screen.getByText(/Reduce volume or load for about one week/)).toBeInTheDocument();
   });
 
   it('has no automated accessibility violations', async () => {
