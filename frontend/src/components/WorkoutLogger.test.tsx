@@ -187,6 +187,53 @@ describe('WorkoutLogger', () => {
     expect(onComplete).toHaveBeenCalledOnce();
   });
 
+  it('starts a rest timer after logging a set and allows its duration to be changed', async () => {
+    const user = userEvent.setup();
+    render(
+      <WorkoutLogger
+        workout={workout}
+        unitPreference="kg"
+        onLogSet={vi.fn().mockResolvedValue(undefined)}
+        onComplete={vi.fn()}
+        onExit={vi.fn()}
+      />
+    );
+
+    await waitFor(() => expect(screen.getByLabelText('Bench Press set 1 reps')).toHaveValue(11));
+    await user.click(screen.getByRole('button', { name: 'Log' }));
+
+    expect(screen.getByLabelText('Workout rest timer')).toBeInTheDocument();
+    expect(screen.getByText('01:30')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Pause' })).toBeInTheDocument();
+
+    const durationInput = screen.getByLabelText('Rest duration (seconds)');
+    await user.clear(durationInput);
+    await user.type(durationInput, '30');
+    expect(screen.getByText('00:30')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Resume' }));
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Saved' }));
+    expect(screen.getByText('00:30')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+  });
+
+  it('counts down while the rest timer is running', async () => {
+    const user = userEvent.setup();
+    render(
+      <WorkoutLogger
+        workout={workout}
+        unitPreference="kg"
+        onLogSet={vi.fn().mockResolvedValue(undefined)}
+        onComplete={vi.fn()}
+        onExit={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Log' }));
+    await screen.findByRole('button', { name: 'Pause' });
+    await waitFor(() => expect(screen.getByText('01:29')).toBeInTheDocument(), { timeout: 2000 });
+  });
+
   it('opens and closes set-recording help', async () => {
     const user = userEvent.setup();
     render(

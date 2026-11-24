@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Workout, WorkoutHistoryItem } from '../api';
 import { UnitPreference, formatWeight, fromKilograms } from '../units';
 
@@ -36,6 +36,14 @@ export function WorkoutLogger({
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [restTimerRequest, setRestTimerRequest] = useState<{
+    exerciseId: string;
+    exerciseName: string;
+    restSeconds: number;
+    signal: number;
+  } | null>(null);
+  const [restNotificationsEnabled, setRestNotificationsEnabled] = useState(false);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
 
   useEffect(() => {
     setDrafts((current) => {
@@ -101,8 +109,55 @@ export function WorkoutLogger({
     try {
       await onLogSet(exerciseId, setNumber, draft);
       setSavedKey(key);
+      const exercise = workout.exercises.find((item) => item.id === exerciseId);
+      if (exercise) {
+        setRestTimerRequest((current) => ({
+          exerciseId,
+          exerciseName: exercise.name,
+          restSeconds: exercise.restSeconds || 90,
+          signal: (current?.signal || 0) + 1,
+        }));
+      }
     } finally {
       setSavingKey(null);
+    }
+  }
+
+  async function toggleRestNotifications(enabled: boolean) {
+    setNotificationError(null);
+    if (!enabled) {
+      setRestNotificationsEnabled(false);
+      return;
+    }
+
+    if (typeof Notification === 'undefined') {
+      setNotificationError('This browser does not support notifications.');
+      return;
+    }
+
+    try {
+      const permission = Notification.permission === 'granted'
+        ? 'granted'
+        : await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setNotificationError('Notification permission was not granted.');
+        return;
+      }
+      setRestNotificationsEnabled(true);
+    } catch {
+      setNotificationError('Could not enable notifications. Check your browser settings and try again.');
+    }
+  }
+
+  function notifyRestComplete() {
+    if (!restNotificationsEnabled || typeof Notification === 'undefined') return;
+
+    try {
+      new Notification('Rest time is up', {
+        body: `Ready for your next set of ${restTimerRequest?.exerciseName || 'your workout'}.`,
+      });
+    } catch {
+      setNotificationError('Could not show a notification. Check your browser settings.');
     }
   }
 
@@ -159,6 +214,19 @@ export function WorkoutLogger({
           </button>
         </div>
       </div>
+
+      {restTimerRequest && (
+        <RestTimer
+          key={restTimerRequest.exerciseId}
+          exerciseName={restTimerRequest.exerciseName}
+          defaultSeconds={restTimerRequest.restSeconds}
+          startSignal={restTimerRequest.signal}
+          notificationsEnabled={restNotificationsEnabled}
+          onNotificationsChange={toggleRestNotifications}
+          onComplete={notifyRestComplete}
+          notificationError={notificationError}
+        />
+      )}
 
       {showHelp && (
         <div
@@ -283,6 +351,128 @@ export function WorkoutLogger({
           </section>
         ))}
       </div>
+    </section>
+  );
+}
+
+function RestTimer({
+  exerciseName,
+  defaultSeconds,
+  startSignal,
+  notificationsEnabled,
+  onNotificationsChange,
+  onComplete,
+  notificationError,
+}: {
+  exerciseName: string;
+  defaultSeconds: number;
+  startSignal: number;
+  notificationsEnabled: boolean;
+  onNotificationsChange: (enabled: boolean) => void;
+  onComplete: () => void;
+  notificationError: string | null;
+}) {
+  const [duration, setDuration] = useState(String(defaultSeconds));
+  const [remaining, setRemaining] = useState(defaultSeconds);
+  const [running, setRunning] = useState(false);
+  const endTime = useRef<number | null>(null);
+  const seconds = Number(duration);
+  const validDuration = duration.trim() !== '' && Number.isInteger(seconds) && seconds >= 5 && seconds <= 3600;
+  const desiredDuration = useRef(defaultSeconds);
+  desiredDuration.current = validDuration ? seconds : defaultSeconds;
+
+  useEffect(() => {
+    if (!startSignal) return;
+    const nextDuration = desiredDuration.current;
+    setRemaining(nextDuration);
+    endTime.current = Date.now() + nextDuration * 1000;
+    setRunning(true);
+  }, [startSignal]);
+
+  useEffect(() => {
+    if (!running) return;
+
+    const interval = window.setInterval(() => {
+      const nextRemaining = Math.max(0, Math.ceil(((endTime.current || Date.now()) - Date.now()) / 1000));
+      setRemaining(nextRemaining);
+      if (nextRemaining === 0) {
+        window.clearInterval(interval);
+        setRunning(false);
+        onComplete();
+      }
+    }, 250);
+    return () => window.clearInterval(interval);
+  }, [running, onComplete]);
+
+  function updateDuration(value: string) {
+    setDuration(value);
+    const nextSeconds = Number(value);
+    if (value.trim() && Number.isInteger(nextSeconds) && nextSeconds >= 5 && nextSeconds <= 3600) {
+      setRemaining(nextSeconds);
+    }
+    setRunning(false);
+    endTime.current = null;
+  }
+
+  function pause() {
+    if (endTime.current !== null) {
+      setRemaining(Math.max(0, Math.ceil((endTime.current - Date.now()) / 1000)));
+    }
+    setRunning(false);
+  }
+
+  function resume() {
+    if (!validDuration || remaining <= 0) return;
+    endTime.current = Date.now() + remaining * 1000;
+    setRunning(true);
+  }
+
+  function reset() {
+    setRunning(false);
+    setRemaining(validDuration ? seconds : defaultSeconds);
+    endTime.current = null;
+  }
+
+  const minutes = Math.floor(remaining / 60).toString().padStart(2, '0');
+  const secondsDisplay = (remaining % 60).toString().padStart(2, '0');
+
+  return (
+    <section className="rest-timer" aria-label="Workout rest timer">
+      <div className="rest-timer-display">
+        <div>
+          <p className="section-label">Rest timer</p>
+          <strong aria-live="polite" aria-atomic="true">{minutes}:{secondsDisplay}</strong>
+          <span>{running ? `Resting after ${exerciseName}` : `After ${exerciseName}`}</span>
+        </div>
+        <div className="rest-timer-controls">
+          <label>
+            Rest duration (seconds)
+            <input
+              type="number"
+              min="5"
+              max="3600"
+              step="5"
+              value={duration}
+              onChange={(event) => updateDuration(event.target.value)}
+            />
+          </label>
+          {running ? (
+            <button type="button" className="ghost-button" onClick={pause}>Pause</button>
+          ) : (
+            <button type="button" className="ghost-button" disabled={!validDuration || remaining === 0} onClick={resume}>Resume</button>
+          )}
+          <button type="button" className="ghost-button" onClick={reset}>Reset</button>
+        </div>
+      </div>
+      <label className="rest-notification-toggle">
+        <input
+          type="checkbox"
+          checked={notificationsEnabled}
+          onChange={(event) => onNotificationsChange(event.target.checked)}
+        />
+        Notify me when rest ends
+      </label>
+      {notificationError && <p className="rest-notification-error" role="status">{notificationError}</p>}
     </section>
   );
 }
