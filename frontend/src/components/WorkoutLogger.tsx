@@ -24,6 +24,14 @@ function draftKey(exerciseId: string, setNumber: number) {
   return `${exerciseId}:${setNumber}`;
 }
 
+function durationPartsFromSeconds(totalSeconds: number) {
+  return {
+    hours: String(Math.floor(totalSeconds / 3600)),
+    minutes: String(Math.floor((totalSeconds % 3600) / 60)),
+    seconds: String(totalSeconds % 60),
+  };
+}
+
 export function WorkoutLogger({
   workout,
   onLogSet,
@@ -36,12 +44,7 @@ export function WorkoutLogger({
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [restTimerRequest, setRestTimerRequest] = useState<{
-    exerciseId: string;
-    exerciseName: string;
-    restSeconds: number;
-    signal: number;
-  } | null>(null);
+  const [restTimerExercise, setRestTimerExercise] = useState(() => workout.exercises[0] ?? null);
   const [restNotificationsEnabled, setRestNotificationsEnabled] = useState(false);
   const [notificationError, setNotificationError] = useState<string | null>(null);
 
@@ -111,12 +114,7 @@ export function WorkoutLogger({
       setSavedKey(key);
       const exercise = workout.exercises.find((item) => item.id === exerciseId);
       if (exercise) {
-        setRestTimerRequest((current) => ({
-          exerciseId,
-          exerciseName: exercise.name,
-          restSeconds: exercise.restSeconds || 90,
-          signal: (current?.signal || 0) + 1,
-        }));
+        setRestTimerExercise(exercise);
       }
     } finally {
       setSavingKey(null);
@@ -154,7 +152,7 @@ export function WorkoutLogger({
 
     try {
       new Notification('Rest time is up', {
-        body: `Ready for your next set of ${restTimerRequest?.exerciseName || 'your workout'}.`,
+        body: `Ready for your next set of ${restTimerExercise?.name || 'your workout'}.`,
       });
     } catch {
       setNotificationError('Could not show a notification. Check your browser settings.');
@@ -215,18 +213,15 @@ export function WorkoutLogger({
         </div>
       </div>
 
-      {restTimerRequest && (
-        <RestTimer
-          key={restTimerRequest.exerciseId}
-          exerciseName={restTimerRequest.exerciseName}
-          defaultSeconds={restTimerRequest.restSeconds}
-          startSignal={restTimerRequest.signal}
-          notificationsEnabled={restNotificationsEnabled}
-          onNotificationsChange={toggleRestNotifications}
-          onComplete={notifyRestComplete}
-          notificationError={notificationError}
-        />
-      )}
+      <RestTimer
+        key={restTimerExercise?.id ?? 'workout'}
+        exerciseName={restTimerExercise?.name ?? 'your workout'}
+        defaultSeconds={restTimerExercise?.restSeconds || 90}
+        notificationsEnabled={restNotificationsEnabled}
+        onNotificationsChange={toggleRestNotifications}
+        onComplete={notifyRestComplete}
+        notificationError={notificationError}
+      />
 
       {showHelp && (
         <div
@@ -358,7 +353,6 @@ export function WorkoutLogger({
 function RestTimer({
   exerciseName,
   defaultSeconds,
-  startSignal,
   notificationsEnabled,
   onNotificationsChange,
   onComplete,
@@ -366,28 +360,27 @@ function RestTimer({
 }: {
   exerciseName: string;
   defaultSeconds: number;
-  startSignal: number;
   notificationsEnabled: boolean;
   onNotificationsChange: (enabled: boolean) => void;
   onComplete: () => void;
   notificationError: string | null;
 }) {
-  const [duration, setDuration] = useState(String(defaultSeconds));
+  const [durationParts, setDurationParts] = useState(() => durationPartsFromSeconds(defaultSeconds));
   const [remaining, setRemaining] = useState(defaultSeconds);
   const [running, setRunning] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const endTime = useRef<number | null>(null);
-  const seconds = Number(duration);
-  const validDuration = duration.trim() !== '' && Number.isInteger(seconds) && seconds >= 5 && seconds <= 3600;
-  const desiredDuration = useRef(defaultSeconds);
-  desiredDuration.current = validDuration ? seconds : defaultSeconds;
-
-  useEffect(() => {
-    if (!startSignal) return;
-    const nextDuration = desiredDuration.current;
-    setRemaining(nextDuration);
-    endTime.current = Date.now() + nextDuration * 1000;
-    setRunning(true);
-  }, [startSignal]);
+  const hours = Number(durationParts.hours);
+  const durationMinutes = Number(durationParts.minutes);
+  const durationRemainderSeconds = Number(durationParts.seconds);
+  const validDurationParts = durationParts.hours.trim() !== ''
+    && durationParts.minutes.trim() !== ''
+    && durationParts.seconds.trim() !== ''
+    && Number.isInteger(hours) && hours >= 0 && hours <= 99
+    && Number.isInteger(durationMinutes) && durationMinutes >= 0 && durationMinutes <= 59
+    && Number.isInteger(durationRemainderSeconds) && durationRemainderSeconds >= 0 && durationRemainderSeconds <= 59;
+  const durationSeconds = hours * 3600 + durationMinutes * 60 + durationRemainderSeconds;
+  const validDuration = validDurationParts && durationSeconds >= 5;
 
   useEffect(() => {
     if (!running) return;
@@ -398,20 +391,41 @@ function RestTimer({
       if (nextRemaining === 0) {
         window.clearInterval(interval);
         setRunning(false);
+        setHasStarted(false);
         onComplete();
       }
     }, 250);
     return () => window.clearInterval(interval);
   }, [running, onComplete]);
 
-  function updateDuration(value: string) {
-    setDuration(value);
-    const nextSeconds = Number(value);
-    if (value.trim() && Number.isInteger(nextSeconds) && nextSeconds >= 5 && nextSeconds <= 3600) {
-      setRemaining(nextSeconds);
+  function updateDurationPart(part: keyof typeof durationParts, value: string) {
+    const nextParts = { ...durationParts, [part]: value };
+    setDurationParts(nextParts);
+    const nextHours = Number(nextParts.hours);
+    const nextMinutes = Number(nextParts.minutes);
+    const nextSeconds = Number(nextParts.seconds);
+    const validParts = nextParts.hours.trim() !== ''
+      && nextParts.minutes.trim() !== ''
+      && nextParts.seconds.trim() !== ''
+      && Number.isInteger(nextHours) && nextHours >= 0 && nextHours <= 99
+      && Number.isInteger(nextMinutes) && nextMinutes >= 0 && nextMinutes <= 59
+      && Number.isInteger(nextSeconds) && nextSeconds >= 0 && nextSeconds <= 59;
+    const nextDuration = nextHours * 3600 + nextMinutes * 60 + nextSeconds;
+    if (validParts && nextDuration >= 5) {
+      setRemaining(nextDuration);
     }
     setRunning(false);
+    setHasStarted(false);
     endTime.current = null;
+  }
+
+  function start() {
+    if (!validDuration) return;
+    const nextRemaining = hasStarted && remaining > 0 ? remaining : durationSeconds;
+    setRemaining(nextRemaining);
+    endTime.current = Date.now() + nextRemaining * 1000;
+    setHasStarted(true);
+    setRunning(true);
   }
 
   function pause() {
@@ -429,11 +443,16 @@ function RestTimer({
 
   function reset() {
     setRunning(false);
-    setRemaining(validDuration ? seconds : defaultSeconds);
+    setHasStarted(false);
+    if (!validDuration) {
+      setDurationParts(durationPartsFromSeconds(defaultSeconds));
+    }
+    setRemaining(validDuration ? durationSeconds : defaultSeconds);
     endTime.current = null;
   }
 
-  const minutes = Math.floor(remaining / 60).toString().padStart(2, '0');
+  const displayHours = Math.floor(remaining / 3600).toString().padStart(2, '0');
+  const minutes = (Math.floor(remaining / 60) % 60).toString().padStart(2, '0');
   const secondsDisplay = (remaining % 60).toString().padStart(2, '0');
 
   return (
@@ -441,25 +460,54 @@ function RestTimer({
       <div className="rest-timer-display">
         <div>
           <p className="section-label">Rest timer</p>
-          <strong aria-live="polite" aria-atomic="true">{minutes}:{secondsDisplay}</strong>
-          <span>{running ? `Resting after ${exerciseName}` : `After ${exerciseName}`}</span>
+          <strong aria-live="polite" aria-atomic="true">{displayHours}:{minutes}:{secondsDisplay}</strong>
+          <span>{running ? `Resting after ${exerciseName}` : `Rest for ${exerciseName}`}</span>
         </div>
         <div className="rest-timer-controls">
-          <label>
-            Rest duration (seconds)
-            <input
-              type="number"
-              min="5"
-              max="3600"
-              step="5"
-              value={duration}
-              onChange={(event) => updateDuration(event.target.value)}
-            />
-          </label>
+          <div className="rest-duration-fields" role="group" aria-label="Rest duration">
+            <label>
+              Hours
+              <input
+                aria-label="Rest duration hours"
+                type="number"
+                min="0"
+                max="99"
+                step="1"
+                value={durationParts.hours}
+                onChange={(event) => updateDurationPart('hours', event.target.value)}
+              />
+            </label>
+            <label>
+              Minutes
+              <input
+                aria-label="Rest duration minutes"
+                type="number"
+                min="0"
+                max="59"
+                step="1"
+                value={durationParts.minutes}
+                onChange={(event) => updateDurationPart('minutes', event.target.value)}
+              />
+            </label>
+            <label>
+              Seconds
+              <input
+                aria-label="Rest duration seconds"
+                type="number"
+                min="0"
+                max="59"
+                step="1"
+                value={durationParts.seconds}
+                onChange={(event) => updateDurationPart('seconds', event.target.value)}
+              />
+            </label>
+          </div>
           {running ? (
             <button type="button" className="ghost-button" onClick={pause}>Pause</button>
-          ) : (
+          ) : hasStarted ? (
             <button type="button" className="ghost-button" disabled={!validDuration || remaining === 0} onClick={resume}>Resume</button>
+          ) : (
+            <button type="button" className="ghost-button" disabled={!validDuration} onClick={start}>Start</button>
           )}
           <button type="button" className="ghost-button" onClick={reset}>Reset</button>
         </div>

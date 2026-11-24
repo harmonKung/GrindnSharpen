@@ -694,8 +694,18 @@ textarea:focus {
   font-weight: 700;
 }
 
+.rest-duration-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.rest-duration-fields label {
+  min-width: 0;
+}
+
 .rest-timer-controls input {
-  width: 120px;
+  width: 72px;
   min-height: 40px;
   padding: 7px 8px;
 }
