@@ -187,7 +187,7 @@ describe('WorkoutLogger', () => {
     expect(onComplete).toHaveBeenCalledOnce();
   });
 
-  it('starts a rest timer after logging a set and allows its duration to be changed', async () => {
+  it('shows the rest timer before sets and starts only when requested', async () => {
     const user = userEvent.setup();
     render(
       <WorkoutLogger
@@ -199,22 +199,32 @@ describe('WorkoutLogger', () => {
       />
     );
 
+    expect(screen.getByLabelText('Workout rest timer')).toBeInTheDocument();
+    expect(screen.getByText('00:01:30')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start' })).toBeInTheDocument();
+
     await waitFor(() => expect(screen.getByLabelText('Bench Press set 1 reps')).toHaveValue(11));
     await user.click(screen.getByRole('button', { name: 'Log' }));
 
-    expect(screen.getByLabelText('Workout rest timer')).toBeInTheDocument();
-    expect(screen.getByText('01:30')).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: 'Pause' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start' })).toBeInTheDocument();
 
-    const durationInput = screen.getByLabelText('Rest duration (seconds)');
-    await user.clear(durationInput);
-    await user.type(durationInput, '30');
-    expect(screen.getByText('00:30')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Resume' }));
+    const hoursInput = screen.getByLabelText('Rest duration hours');
+    const minutesInput = screen.getByLabelText('Rest duration minutes');
+    await user.clear(hoursInput);
+    await user.type(hoursInput, '1');
+    expect(screen.getByText('01:01:30')).toBeInTheDocument();
+    await user.clear(hoursInput);
+    await user.type(hoursInput, '0');
+    await user.clear(minutesInput);
+    await user.type(minutesInput, '0');
+    expect(screen.getByText('00:00:30')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Start' }));
     expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Pause' }));
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Saved' }));
-    expect(screen.getByText('00:30')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+    expect(screen.getByText('00:00:30')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
   });
 
   it('counts down while the rest timer is running', async () => {
@@ -230,8 +240,9 @@ describe('WorkoutLogger', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Log' }));
+    await user.click(screen.getByRole('button', { name: 'Start' }));
     await screen.findByRole('button', { name: 'Pause' });
-    await waitFor(() => expect(screen.getByText('01:29')).toBeInTheDocument(), { timeout: 2000 });
+    await waitFor(() => expect(screen.getByText('00:01:29')).toBeInTheDocument(), { timeout: 2000 });
   });
 
   it('opens and closes set-recording help', async () => {
