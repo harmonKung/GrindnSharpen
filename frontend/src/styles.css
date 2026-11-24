@@ -646,6 +646,80 @@ textarea:focus {
   border-bottom: 1px solid #e8d8cb;
 }
 
+.rest-timer {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0 28px;
+  padding: 16px 18px;
+  border: 1px solid #eadfd5;
+  border-radius: 12px;
+  background: #fffaf6;
+}
+
+.rest-timer-display,
+.rest-timer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.rest-timer-display > div:first-child {
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+}
+
+.rest-timer .section-label {
+  margin-bottom: 0;
+}
+
+.rest-timer-display strong {
+  color: #a94310;
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.rest-timer-display span {
+  color: #7b6655;
+  font-size: 0.82rem;
+}
+
+.rest-timer-controls label {
+  display: grid;
+  gap: 4px;
+  color: #7b6655;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.rest-timer-controls input {
+  width: 120px;
+  min-height: 40px;
+  padding: 7px 8px;
+}
+
+.rest-notification-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6f5847;
+  font-size: 0.82rem;
+}
+
+.rest-notification-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #a94310;
+}
+
+.rest-notification-error {
+  margin: 0;
+  color: #a02b1d;
+  font-size: 0.82rem;
+}
+
 .routine-controls {
   display: flex;
   align-items: flex-end;
@@ -1553,6 +1627,16 @@ textarea:focus {
   .workout-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .rest-timer-display {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .rest-timer-controls {
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .progression-cue {
