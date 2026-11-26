@@ -265,6 +265,16 @@ export type WorkoutHistoryItem = {
   totalVolumeKg: string | number;
 };
 
+export type ScheduledWorkout = {
+  id: string;
+  routineId: string;
+  routineDayId: string;
+  routineName: string;
+  routineDayName: string;
+  scheduledDate: string;
+  status: 'scheduled' | 'missed';
+};
+
 type ApiErrorBody = {
   error?: string;
   errors?: Array<{ msg: string }>;
@@ -377,6 +387,24 @@ export function getWorkout(accessToken: string, workoutId: string) {
 
 export function listWorkoutHistory(accessToken: string) {
   return request<{ workouts: WorkoutHistoryItem[] }>('/api/workouts/history', {}, accessToken);
+}
+
+export function getTrainingCalendar(accessToken: string) {
+  return request<{ workouts: ScheduledWorkout[] }>('/api/calendar', {}, accessToken);
+}
+
+export function createTrainingSchedule(accessToken: string, routineId: string, weekdays: number[]) {
+  return request<{ message: string; scheduledCount: number }>('/api/calendar/schedule', {
+    method: 'POST',
+    body: JSON.stringify({ routineId, weekdays }),
+  }, accessToken);
+}
+
+export function moveScheduledWorkout(accessToken: string, scheduledWorkoutId: string, scheduledDate: string) {
+  return request<{ workout: ScheduledWorkout }>(`/api/calendar/${scheduledWorkoutId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ scheduledDate }),
+  }, accessToken);
 }
 
 export function getExerciseHistory(accessToken: string, exerciseId: string, limit = 10) {

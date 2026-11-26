@@ -237,6 +237,15 @@ export const startWorkout = async (req: AuthRequest, res: Response): Promise<voi
     );
     const workoutId = workoutResult.rows[0].id;
 
+    await client.query(
+      `UPDATE scheduled_workouts
+       SET workout_session_id = $1
+       WHERE user_id = $2 AND routine_day_id = $3
+         AND scheduled_date = CURRENT_DATE AND status = 'scheduled'
+         AND workout_session_id IS NULL`,
+      [workoutId, req.user!.userId, day.id]
+    );
+
     for (const exercise of prescribedResult.rows) {
       await client.query(
         `INSERT INTO workout_session_exercises (
@@ -445,6 +454,17 @@ async function finishWorkout(
     res.status(404).json({ error: 'Active workout not found' });
     return;
   }
+
+  await query(
+    `UPDATE scheduled_workouts
+     SET status = CASE WHEN $1 = 'completed' THEN 'completed'
+                       WHEN scheduled_date < CURRENT_DATE THEN 'missed'
+                       ELSE 'scheduled' END,
+         workout_session_id = CASE WHEN $1 = 'completed' THEN workout_session_id
+                                   ELSE NULL END
+     WHERE workout_session_id = $2`,
+    [status, req.params.id]
+  );
 
   const workout = await getWorkoutDetails(req.user!.userId, req.params.id);
   res.json({ workout });

@@ -77,6 +77,7 @@ Open:
 - Focused workout logging with reps, weight, and RIR
 - Previous-performance targets and progressive-overload suggestions
 - Workout history with deletion controls
+- Four-week training calendars with routine-day scheduling, upcoming workouts, and missed-session rescheduling
 - Body-weight check-ins, trends, and deletion controls
 - Diet logging by meal, date, and optional calories
 - Weekly training metrics, strength trends, and personal records
@@ -189,6 +190,7 @@ All protected endpoints require `Authorization: Bearer <access-token>`.
 - `/api/profile` - profile details and preferences
 - `/api/routines` - generate and retrieve routines
 - `/api/workouts` - start, log, complete, resume, delete, and list workouts
+- `/api/calendar` - create a four-week weekday schedule, list upcoming and missed sessions, and reschedule workouts
 - `/api/progress` - dashboard summary, exercise history, and body-weight logs
 
 ## Project Structure

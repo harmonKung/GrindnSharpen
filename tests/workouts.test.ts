@@ -252,6 +252,7 @@ describe('workout API', () => {
   it('completes an owned active workout', async () => {
     databaseMocks.query
       .mockReturnValueOnce(result([{ id: workoutId }]))
+      .mockReturnValueOnce(result())
       .mockReturnValueOnce(result([workoutRow('completed')]))
       .mockReturnValueOnce(result())
       .mockReturnValueOnce(result());
