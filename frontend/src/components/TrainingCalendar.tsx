@@ -207,7 +207,7 @@ export function TrainingCalendar({
         <div className="calendar-schedule-setup">
           <div>
             <h3>Choose your training days</h3>
-            <p>We’ll cycle through your routine days and repeat the plan for four weeks.</p>
+            <p>We’ll place workouts on your selected days and cycle through your routine days.</p>
           </div>
           <fieldset className="calendar-weekday-options">
             <legend>Pick {scheduleDaysPerWeek} days each week</legend>
@@ -228,7 +228,9 @@ export function TrainingCalendar({
             disabled={savingSchedule || selectedWeekdays.length !== scheduleDaysPerWeek}
             onClick={saveSchedule}
           >
-            {savingSchedule ? 'Saving...' : hasUpcomingSchedule ? 'Update 4-week schedule' : 'Save 4-week schedule'}
+            {savingSchedule
+              ? 'Saving...'
+              : `${hasUpcomingSchedule ? 'Update' : 'Save'} ${scheduleDaysPerWeek}-day/week schedule`}
           </button>
           {hasUpcomingSchedule && (
             <button type="button" className="ghost-button" disabled={savingSchedule} onClick={cancelScheduleEdit}>

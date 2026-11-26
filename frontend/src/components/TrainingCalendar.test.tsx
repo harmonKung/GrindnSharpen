@@ -76,7 +76,7 @@ describe('TrainingCalendar', () => {
     await user.click(screen.getByRole('button', { name: 'Edit schedule' }));
     await user.click(screen.getByRole('checkbox', { name: 'Mon' }));
     await user.click(screen.getByRole('checkbox', { name: 'Sun' }));
-    await user.click(screen.getByRole('button', { name: 'Update 4-week schedule' }));
+    await user.click(screen.getByRole('button', { name: 'Update 2-day/week schedule' }));
 
     await waitFor(() => expect(calendarApi.createTrainingSchedule).toHaveBeenCalledWith(
       'token',
@@ -101,7 +101,7 @@ describe('TrainingCalendar', () => {
     await user.click(screen.getByRole('button', { name: 'Edit schedule' }));
     expect(screen.getByRole('group', { name: 'Pick 7 days each week' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Update 4-week schedule' }));
+    await user.click(screen.getByRole('button', { name: 'Update 7-day/week schedule' }));
     await waitFor(() => expect(calendarApi.createTrainingSchedule).toHaveBeenCalledWith(
       'token',
       'routine-1',
