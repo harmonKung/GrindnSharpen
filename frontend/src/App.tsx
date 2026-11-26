@@ -249,13 +249,26 @@ function App() {
     try {
       const payload = buildProfilePayload(profile);
       const response = await updateProfile(session.accessToken, payload);
+      const scheduleChanged = previousDaysPerWeek !== response.profile.daysPerWeek;
       setProfile({ ...profile, ...response.profile });
-      if (previousDaysPerWeek !== response.profile.daysPerWeek) {
-        setProfileScheduleRevision((revision) => revision + 1);
-      }
       setEditingProfile(false);
       setProfileBeforeEdit(null);
       setMessage('Profile saved.');
+      if (scheduleChanged && routine) {
+        setGenerating(true);
+        try {
+          const routineResponse = await generateRoutine(session.accessToken);
+          setRoutine(routineResponse.routine);
+          setActiveDayIndex(0);
+          setMessage('Profile and routine updated.');
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : 'Could not generate an updated routine';
+          setError(`Profile saved, but the routine could not be updated: ${reason}`);
+        } finally {
+          setGenerating(false);
+          setProfileScheduleRevision((revision) => revision + 1);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save profile');
     } finally {
@@ -279,6 +292,7 @@ function App() {
       const response = await generateRoutine(session.accessToken);
       setRoutine(response.routine);
       setActiveDayIndex(0);
+      setProfileScheduleRevision((revision) => revision + 1);
       setMessage('New routine generated.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not generate routine');
@@ -384,6 +398,7 @@ function App() {
     setMainView('profile');
     setEditingProfile(false);
     setProfileBeforeEdit(null);
+    setProfileScheduleRevision(0);
     setMessage('');
     setError('');
   }
@@ -681,6 +696,12 @@ function App() {
           </section>
 
           <section className="routine-workspace dashboard-card routine-dashboard-card" aria-labelledby="dashboard-routine-title">
+              {routine && routine.daysPerWeek !== profile.daysPerWeek && (
+                <p className="routine-schedule-notice" role="status">
+                  Your profile is set to {profile.daysPerWeek} training days per week, but this routine has {routine.daysPerWeek}.
+                  Update the routine to match.
+                </p>
+              )}
               <div className="routine-controls">
                 <div>
                   <p className="section-label">Routine setup</p>
@@ -702,7 +723,11 @@ function App() {
                     </select>
                   </label>
                   <button className="secondary-button" type="button" disabled={generating} onClick={handleGenerateRoutine}>
-                    {generating ? 'Generating...' : routine ? 'Generate new routine' : 'Generate routine'}
+                    {generating
+                      ? 'Generating...'
+                      : routine && routine.daysPerWeek !== profile.daysPerWeek
+                        ? `Update routine to ${profile.daysPerWeek} days`
+                        : routine ? 'Generate new routine' : 'Generate routine'}
                   </button>
                 </div>
               </div>
