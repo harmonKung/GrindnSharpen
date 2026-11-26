@@ -124,6 +124,7 @@ function App() {
   const [mainView, setMainView] = useState<MainView>('profile');
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileBeforeEdit, setProfileBeforeEdit] = useState<Partial<Profile> | null>(null);
+  const [profileScheduleRevision, setProfileScheduleRevision] = useState(0);
 
   const isSignedIn = !!session?.accessToken;
 
@@ -240,6 +241,7 @@ function App() {
     event.preventDefault();
     if (!session?.accessToken) return;
 
+    const previousDaysPerWeek = profileBeforeEdit?.daysPerWeek;
     setLoading(true);
     setError('');
     setMessage('');
@@ -248,6 +250,9 @@ function App() {
       const payload = buildProfilePayload(profile);
       const response = await updateProfile(session.accessToken, payload);
       setProfile({ ...profile, ...response.profile });
+      if (previousDaysPerWeek !== response.profile.daysPerWeek) {
+        setProfileScheduleRevision((revision) => revision + 1);
+      }
       setEditingProfile(false);
       setProfileBeforeEdit(null);
       setMessage('Profile saved.');
@@ -266,7 +271,11 @@ function App() {
     setMessage('');
 
     try {
-      await updateProfile(session.accessToken, buildProfilePayload(profile));
+      const profileResponse = await updateProfile(session.accessToken, buildProfilePayload(profile));
+      if (profile.daysPerWeek !== profileResponse.profile.daysPerWeek) {
+        setProfileScheduleRevision((revision) => revision + 1);
+      }
+      setProfile({ ...profile, ...profileResponse.profile });
       const response = await generateRoutine(session.accessToken);
       setRoutine(response.routine);
       setActiveDayIndex(0);
@@ -664,6 +673,8 @@ function App() {
             <TrainingCalendar
               accessToken={session.accessToken}
               routine={routine}
+              profileDaysPerWeek={profile.daysPerWeek}
+              scheduleRevision={profileScheduleRevision}
               preferredDays={profile.preferredDays}
               onStartWorkout={handleStartWorkout}
             />
