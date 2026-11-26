@@ -67,7 +67,7 @@ export const createTrainingSchedule = async (req: AuthRequest, res: Response): P
   try {
     const { routineId, weekdays } = req.body as { routineId: string; weekdays: number[] };
     const routineResult = await client.query(
-      `SELECT id, days_per_week
+      `SELECT id
        FROM routines
        WHERE id = $1 AND user_id = $2`,
       [routineId, req.user!.userId]
@@ -85,8 +85,8 @@ export const createTrainingSchedule = async (req: AuthRequest, res: Response): P
        ORDER BY day_number`,
       [routine.id]
     );
-    if (weekdays.length !== routine.days_per_week || daysResult.rows.length !== routine.days_per_week) {
-      res.status(422).json({ error: 'Choose one weekday for each routine day' });
+    if (daysResult.rows.length === 0) {
+      res.status(422).json({ error: 'The routine has no training days to schedule' });
       return;
     }
 

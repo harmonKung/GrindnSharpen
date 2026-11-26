@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Routine,
   ScheduledWorkout,
@@ -10,6 +10,8 @@ import {
 type Props = {
   accessToken: string;
   routine: Routine | null;
+  profileDaysPerWeek?: number | null;
+  scheduleRevision?: number;
   preferredDays?: string[] | null;
   onStartWorkout: (routineDayId: string) => void;
 };
@@ -47,23 +49,55 @@ function formatScheduledDate(value: string) {
   });
 }
 
-function initialWeekdays(routine: Routine, preferredDays?: string[] | null) {
+function initialWeekdays(daysPerWeek: number, preferredDays?: string[] | null) {
   const preferred = (preferredDays ?? [])
     .map((day) => weekdays.find((weekday) => weekday.name.toLowerCase() === day.toLowerCase())?.value)
     .filter((day): day is number => day !== undefined);
-  if (preferred.length === routine.daysPerWeek) return preferred.sort((a, b) => a - b);
-  return defaultWeekOrder.slice(0, routine.daysPerWeek).sort((a, b) => a - b);
+  if (preferred.length === daysPerWeek) return preferred.sort((a, b) => a - b);
+  return defaultWeekOrder.slice(0, daysPerWeek).sort((a, b) => a - b);
 }
 
-export function TrainingCalendar({ accessToken, routine, preferredDays, onStartWorkout }: Props) {
+function scheduledWeekdays(workouts: ScheduledWorkout[]) {
+  return [...new Set(workouts
+    .filter((workout) => workout.status === 'scheduled')
+    .map((workout) => {
+      const [year, month, day] = workout.scheduledDate.slice(0, 10).split('-').map(Number);
+      return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+    }))].sort((a, b) => a - b);
+}
+
+function adjustedWeekdays(current: number[], daysPerWeek: number, preferredDays?: string[] | null) {
+  const selected = current.length ? current : initialWeekdays(daysPerWeek, preferredDays);
+  if (selected.length >= daysPerWeek) return selected.slice(0, daysPerWeek);
+
+  return [...selected, ...defaultWeekOrder
+    .filter((day) => !selected.includes(day))
+    .slice(0, daysPerWeek - selected.length)].sort((a, b) => a - b);
+}
+
+export function TrainingCalendar({
+  accessToken,
+  routine,
+  profileDaysPerWeek,
+  scheduleRevision = 0,
+  preferredDays,
+  onStartWorkout,
+}: Props) {
   const [workouts, setWorkouts] = useState<ScheduledWorkout[]>([]);
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
   const [moveDates, setMoveDates] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [calendarLoaded, setCalendarLoaded] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState(false);
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [movingId, setMovingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const lastScheduleRevision = useRef(scheduleRevision);
+  const scheduleDaysPerWeek = profileDaysPerWeek ?? routine?.daysPerWeek ?? 0;
+  const currentScheduleWeekdays = scheduledWeekdays(workouts);
+  const hasUpcomingSchedule = currentScheduleWeekdays.length > 0;
+  const showScheduleEditor = editingSchedule || (calendarLoaded && !hasUpcomingSchedule);
 
   async function refreshCalendar() {
     const response = await getTrainingCalendar(accessToken);
@@ -71,16 +105,45 @@ export function TrainingCalendar({ accessToken, routine, preferredDays, onStartW
   }
 
   useEffect(() => {
-    setSelectedWeekdays(routine ? initialWeekdays(routine, preferredDays) : []);
-  }, [routine?.id, routine?.daysPerWeek, preferredDays]);
+    setSelectedWeekdays(scheduleDaysPerWeek ? initialWeekdays(scheduleDaysPerWeek, preferredDays) : []);
+  }, [routine?.id, scheduleDaysPerWeek, preferredDays]);
+
+  useEffect(() => {
+    if (currentScheduleWeekdays.length === scheduleDaysPerWeek) {
+      setSelectedWeekdays(currentScheduleWeekdays);
+    }
+  }, [workouts, scheduleDaysPerWeek]);
+
+  useEffect(() => {
+    if (scheduleRevision === lastScheduleRevision.current || !routine || !calendarLoaded) return;
+    lastScheduleRevision.current = scheduleRevision;
+
+    const nextWeekdays = adjustedWeekdays(currentScheduleWeekdays, scheduleDaysPerWeek, preferredDays);
+    setSelectedWeekdays(nextWeekdays);
+    setSavingSchedule(true);
+    setError('');
+    setMessage('');
+    createTrainingSchedule(accessToken, routine.id, nextWeekdays)
+      .then(async (result) => {
+        await refreshCalendar();
+        setEditingSchedule(false);
+        setMessage(`Calendar updated to ${scheduleDaysPerWeek} days per week (${result.scheduledCount} sessions).`);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not update calendar schedule'))
+      .finally(() => setSavingSchedule(false));
+  }, [scheduleRevision, calendarLoaded, routine?.id]);
 
   useEffect(() => {
     setLoading(true);
+    setCalendarLoaded(false);
     setError('');
     getTrainingCalendar(accessToken)
       .then((response) => setWorkouts(response.workouts))
       .catch((err) => setError(err instanceof Error ? err.message : 'Could not load training calendar'))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setCalendarLoaded(true);
+      });
   }, [accessToken]);
 
   async function saveSchedule() {
@@ -91,6 +154,7 @@ export function TrainingCalendar({ accessToken, routine, preferredDays, onStartW
     try {
       const result = await createTrainingSchedule(accessToken, routine.id, selectedWeekdays);
       await refreshCalendar();
+      setEditingSchedule(false);
       setMessage(`Schedule saved with ${result.scheduledCount} sessions.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save schedule');
@@ -121,6 +185,11 @@ export function TrainingCalendar({ accessToken, routine, preferredDays, onStartW
       : [...current, value].sort((a, b) => a - b));
   }
 
+  function cancelScheduleEdit() {
+    setSelectedWeekdays(adjustedWeekdays(currentScheduleWeekdays, scheduleDaysPerWeek, preferredDays));
+    setEditingSchedule(false);
+  }
+
   const missedWorkouts = workouts.filter((workout) => workout.status === 'missed');
   const upcomingWorkouts = workouts.filter((workout) => workout.status === 'scheduled');
 
@@ -134,14 +203,14 @@ export function TrainingCalendar({ accessToken, routine, preferredDays, onStartW
         {loading && <span className="calendar-loading" role="status">Loading...</span>}
       </div>
 
-      {routine ? (
+      {routine && showScheduleEditor ? (
         <div className="calendar-schedule-setup">
           <div>
             <h3>Choose your training days</h3>
-            <p>We’ll place each routine day in order and repeat the plan for four weeks.</p>
+            <p>We’ll cycle through your routine days and repeat the plan for four weeks.</p>
           </div>
           <fieldset className="calendar-weekday-options">
-            <legend>Pick {routine.daysPerWeek} days each week</legend>
+            <legend>Pick {scheduleDaysPerWeek} days each week</legend>
             {weekdays.map((weekday) => (
               <label key={weekday.value} className={selectedWeekdays.includes(weekday.value) ? 'selected' : ''}>
                 <input
@@ -156,10 +225,27 @@ export function TrainingCalendar({ accessToken, routine, preferredDays, onStartW
           <button
             type="button"
             className="primary-button"
-            disabled={savingSchedule || selectedWeekdays.length !== routine.daysPerWeek}
+            disabled={savingSchedule || selectedWeekdays.length !== scheduleDaysPerWeek}
             onClick={saveSchedule}
           >
-            {savingSchedule ? 'Saving...' : 'Save 4-week schedule'}
+            {savingSchedule ? 'Saving...' : hasUpcomingSchedule ? 'Update 4-week schedule' : 'Save 4-week schedule'}
+          </button>
+          {hasUpcomingSchedule && (
+            <button type="button" className="ghost-button" disabled={savingSchedule} onClick={cancelScheduleEdit}>
+              Cancel
+            </button>
+          )}
+        </div>
+      ) : routine ? (
+        <div className="calendar-schedule-summary">
+          <div>
+            <strong>{currentScheduleWeekdays.length} training days each week</strong>
+            {currentScheduleWeekdays.length !== scheduleDaysPerWeek && (
+              <p>Your profile is set to {scheduleDaysPerWeek} days per week. Update the calendar to match.</p>
+            )}
+          </div>
+          <button type="button" className="secondary-button" disabled={savingSchedule} onClick={() => setEditingSchedule(true)}>
+            Edit schedule
           </button>
         </div>
       ) : (

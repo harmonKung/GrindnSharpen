@@ -124,6 +124,53 @@ describe('training calendar API', () => {
     expect(client.release).toHaveBeenCalledOnce();
   });
 
+  it('cycles routine days when the profile schedules more days than the routine contains', async () => {
+    client.query
+      .mockReturnValueOnce(result([{ id: routineId }]))
+      .mockReturnValueOnce(result([
+        { id: 'day-one', name: 'Upper body' },
+        { id: 'day-two', name: 'Lower body' },
+      ]))
+      .mockReturnValueOnce(result())
+      .mockReturnValueOnce(result())
+      .mockReturnValueOnce(result([
+        { scheduled_date: '2026-06-22' },
+        { scheduled_date: '2026-06-23' },
+        { scheduled_date: '2026-06-24' },
+        { scheduled_date: '2026-06-25' },
+        { scheduled_date: '2026-06-26' },
+        { scheduled_date: '2026-06-27' },
+        { scheduled_date: '2026-06-28' },
+      ]))
+      .mockReturnValueOnce(result())
+      .mockReturnValueOnce(result())
+      .mockReturnValueOnce(result())
+      .mockReturnValueOnce(result())
+      .mockReturnValueOnce(result())
+      .mockReturnValueOnce(result())
+      .mockReturnValueOnce(result())
+      .mockReturnValueOnce(result())
+      .mockReturnValueOnce(result());
+
+    const response = await authenticated('post', '/api/calendar/schedule')
+      .send({ routineId, weekdays: [0, 1, 2, 3, 4, 5, 6] });
+
+    expect(response.status).toBe(201);
+    expect(response.body.scheduledCount).toBe(7);
+    const inserts = client.query.mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO scheduled_workouts')
+    );
+    expect(inserts.map(([, values]) => values[2])).toEqual([
+      'day-one',
+      'day-two',
+      'day-one',
+      'day-two',
+      'day-one',
+      'day-two',
+      'day-one',
+    ]);
+  });
+
   it('moves an owned scheduled workout to the selected date', async () => {
     databaseMocks.query.mockReturnValueOnce(result([{
       id: scheduledId,

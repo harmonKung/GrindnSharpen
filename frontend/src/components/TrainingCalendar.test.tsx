@@ -58,6 +58,12 @@ describe('TrainingCalendar', () => {
 
   it('lets the user build a recurring schedule from selected weekdays', async () => {
     const user = userEvent.setup();
+    calendarApi.getTrainingCalendar.mockResolvedValue({
+      workouts: [
+        { ...workouts[0], scheduledDate: '2026-07-01' },
+        { ...workouts[1], status: 'scheduled', scheduledDate: '2026-06-22' },
+      ],
+    });
     render(
       <TrainingCalendar
         accessToken="token"
@@ -67,9 +73,10 @@ describe('TrainingCalendar', () => {
     );
 
     await screen.findByText('Upper body · Strength plan');
+    await user.click(screen.getByRole('button', { name: 'Edit schedule' }));
     await user.click(screen.getByRole('checkbox', { name: 'Mon' }));
     await user.click(screen.getByRole('checkbox', { name: 'Sun' }));
-    await user.click(screen.getByRole('button', { name: 'Save 4-week schedule' }));
+    await user.click(screen.getByRole('button', { name: 'Update 4-week schedule' }));
 
     await waitFor(() => expect(calendarApi.createTrainingSchedule).toHaveBeenCalledWith(
       'token',
@@ -77,6 +84,50 @@ describe('TrainingCalendar', () => {
       [0, 3]
     ));
     expect(await screen.findByRole('status')).toHaveTextContent('Schedule saved with 8 sessions.');
+  });
+
+  it('updates the calendar frequency to match the profile when it differs from the routine', async () => {
+    const user = userEvent.setup();
+    render(
+      <TrainingCalendar
+        accessToken="token"
+        routine={routine}
+        profileDaysPerWeek={7}
+        onStartWorkout={vi.fn()}
+      />
+    );
+
+    await screen.findByText('Your profile is set to 7 days per week. Update the calendar to match.');
+    await user.click(screen.getByRole('button', { name: 'Edit schedule' }));
+    expect(screen.getByRole('group', { name: 'Pick 7 days each week' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Update 4-week schedule' }));
+    await waitFor(() => expect(calendarApi.createTrainingSchedule).toHaveBeenCalledWith(
+      'token',
+      'routine-1',
+      [0, 1, 2, 3, 4, 5, 6]
+    ));
+  });
+
+  it('automatically reschedules when a saved profile schedule changes', async () => {
+    const props = {
+      accessToken: 'token',
+      routine,
+      profileDaysPerWeek: 2,
+      scheduleRevision: 0,
+      onStartWorkout: vi.fn(),
+    };
+    const { rerender } = render(<TrainingCalendar {...props} />);
+    await screen.findByText('Upper body · Strength plan');
+
+    rerender(<TrainingCalendar {...props} profileDaysPerWeek={7} scheduleRevision={1} />);
+
+    await waitFor(() => expect(calendarApi.createTrainingSchedule).toHaveBeenCalledWith(
+      'token',
+      'routine-1',
+      [0, 1, 2, 3, 4, 5, 6]
+    ));
+    expect(await screen.findByText('Calendar updated to 7 days per week (8 sessions).')).toBeInTheDocument();
   });
 
   it('reschedules missed workouts and offers upcoming workout starts', async () => {

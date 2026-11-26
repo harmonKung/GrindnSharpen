@@ -1576,6 +1576,27 @@ textarea:focus {
   min-height: 42px;
 }
 
+.calendar-schedule-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid #eadfd5;
+  border-radius: 10px;
+  background: #fffaf5;
+}
+
+.calendar-schedule-summary strong {
+  color: #614a38;
+}
+
+.calendar-schedule-summary p {
+  margin: 5px 0 0;
+  color: #7b6655;
+  font-size: 0.83rem;
+}
+
 .calendar-workout-groups {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1875,6 +1896,7 @@ textarea:focus {
   }
 
   .calendar-schedule-setup,
+  .calendar-schedule-summary,
   .calendar-workout {
     align-items: stretch;
     flex-direction: column;
