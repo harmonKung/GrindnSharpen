@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import helmet from 'helmet';
 import authRoutes from './routes/auth';
+import calendarRoutes from './routes/calendar';
 import profileRoutes from './routes/profile';
 import progressRoutes from './routes/progress';
 import routineRoutes from './routes/routines';
@@ -35,6 +36,7 @@ app.use((req, res, next) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/calendar', calendarRoutes);
 app.use('/api/routines', routineRoutes);
 app.use('/api/workouts', workoutRoutes);
 app.use('/api/progress', progressRoutes);

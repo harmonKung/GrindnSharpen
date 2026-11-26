@@ -205,6 +205,25 @@ CREATE INDEX IF NOT EXISTS idx_workout_sessions_user_id ON workout_sessions(user
 CREATE INDEX IF NOT EXISTS idx_workout_sessions_user_status ON workout_sessions(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_workout_sessions_routine_id ON workout_sessions(routine_id);
 
+-- TRAINING CALENDAR
+
+CREATE TABLE IF NOT EXISTS scheduled_workouts (
+  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  routine_id          UUID NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
+  routine_day_id      UUID NOT NULL REFERENCES routine_days(id) ON DELETE CASCADE,
+  scheduled_date      DATE NOT NULL,
+  status              VARCHAR(20) NOT NULL DEFAULT 'scheduled'
+    CHECK (status IN ('scheduled', 'missed', 'completed')),
+  workout_session_id  UUID UNIQUE REFERENCES workout_sessions(id) ON DELETE SET NULL,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, scheduled_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_scheduled_workouts_user_date
+  ON scheduled_workouts(user_id, scheduled_date);
+
 
 -- EXERCISES PERFORMED IN A WORKOUT
 
@@ -335,6 +354,11 @@ CREATE TRIGGER update_routine_exercises_updated_at
 DROP TRIGGER IF EXISTS update_workout_sessions_updated_at ON workout_sessions;
 CREATE TRIGGER update_workout_sessions_updated_at
   BEFORE UPDATE ON workout_sessions
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_scheduled_workouts_updated_at ON scheduled_workouts;
+CREATE TRIGGER update_scheduled_workouts_updated_at
+  BEFORE UPDATE ON scheduled_workouts
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS update_workout_session_exercises_updated_at ON workout_session_exercises;

@@ -24,6 +24,7 @@ import {
 } from './api';
 import { WorkoutHistory, WorkoutLogger } from './components/WorkoutLogger';
 import { ProgressDashboard } from './components/ProgressDashboard';
+import { TrainingCalendar } from './components/TrainingCalendar';
 import { UnitPreference, formatWeight, fromKilograms, toKilograms } from './units';
 
 type AuthMode = 'login' | 'register';
@@ -658,6 +659,15 @@ function App() {
             </div>
           </form>
           )}
+
+          <section className="dashboard-card calendar-dashboard-card">
+            <TrainingCalendar
+              accessToken={session.accessToken}
+              routine={routine}
+              preferredDays={profile.preferredDays}
+              onStartWorkout={handleStartWorkout}
+            />
+          </section>
 
           <section className="routine-workspace dashboard-card routine-dashboard-card" aria-labelledby="dashboard-routine-title">
               <div className="routine-controls">
